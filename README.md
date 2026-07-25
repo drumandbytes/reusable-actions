@@ -67,6 +67,60 @@ jobs:
 Note that the `paths` filter stays in the caller — a reusable workflow cannot
 define its own triggers.
 
+### `security-scan.yml`
+
+Trivy scan covering dependency vulnerabilities, committed secrets, and IaC
+misconfigurations in one pass. Findings fail the job and print as a table in
+the log.
+
+Results are deliberately **not** uploaded as SARIF to GitHub code scanning:
+that requires GitHub Code Security / Advanced Security on private
+repositories, which this org does not pay for. Failing the build gives the
+same protection with no billable surface, and behaves the same way on public
+and private repos.
+
+**Inputs**
+
+| Name | Required | Default | Description |
+|---|---|---|---|
+| `scan-ref` | no | `.` | Path to scan, relative to repo root |
+| `scanners` | no | `vuln,secret,misconfig` | Which Trivy scanners to run |
+| `severity` | no | `CRITICAL,HIGH` | Severities that fail the build |
+| `ignore-unfixed` | no | `true` | Skip vulnerabilities with no fix available |
+| `skip-dirs` | no | `""` | Comma-separated directories to exclude |
+
+```yaml
+jobs:
+  security:
+    uses: drumandbytes/reusable-actions/.github/workflows/security-scan.yml@v1
+```
+
+### `opentofu-validate.yml`
+
+Runs `tofu fmt -check -recursive` and `tofu validate` against a root module.
+Uses `init -backend=false`, so it needs no credentials and is safe on pull
+requests.
+
+**Inputs**
+
+| Name | Required | Default | Description |
+|---|---|---|---|
+| `working-directory` | no | `.` | Root module directory |
+| `tofu-version` | no | `1.12.3` | OpenTofu CLI version |
+| `check-format` | no | `true` | Run the recursive format check |
+
+```yaml
+jobs:
+  validate:
+    uses: drumandbytes/reusable-actions/.github/workflows/opentofu-validate.yml@v1
+
+  validate-bootstrap:
+    uses: drumandbytes/reusable-actions/.github/workflows/opentofu-validate.yml@v1
+    with:
+      working-directory: bootstrap/r2-state-backend
+      check-format: false
+```
+
 ## Related
 
 Org infrastructure, including the repository and ruleset configuration that

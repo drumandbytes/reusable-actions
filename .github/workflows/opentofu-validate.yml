@@ -1,0 +1,57 @@
+name: OpenTofu validate
+
+# Format and validity checks for an OpenTofu root module. Needs no credentials:
+# `init -backend=false` skips backend configuration entirely, so this runs
+# safely on pull requests without touching remote state.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: Root module directory, relative to the repository root.
+        required: false
+        type: string
+        default: "."
+      tofu-version:
+        description: OpenTofu CLI version to install.
+        required: false
+        type: string
+        default: "1.12.3"
+      check-format:
+        description: >-
+          Run `tofu fmt -check -recursive`. Disable for a nested module when a
+          parent job already format-checks the whole repository, to avoid
+          reporting the same failure twice.
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+jobs:
+  fmt:
+    name: Format check
+    if: inputs.check-format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: ${{ inputs.tofu-version }}
+      - run: tofu fmt -check -recursive
+        working-directory: ${{ inputs.working-directory }}
+
+  validate:
+    name: Validate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: opentofu/setup-opentofu@v2
+        with:
+          tofu_version: ${{ inputs.tofu-version }}
+      - name: Init (no backend, so no credentials required)
+        run: tofu init -backend=false
+        working-directory: ${{ inputs.working-directory }}
+      - run: tofu validate
+        working-directory: ${{ inputs.working-directory }}

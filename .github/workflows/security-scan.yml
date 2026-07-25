@@ -1,0 +1,65 @@
+name: Security scan
+
+# Trivy-based scanning: dependency vulnerabilities, committed secrets, and IaC
+# misconfigurations in a single pass.
+#
+# Findings fail the job and are printed as a table in the log. Results are
+# deliberately NOT uploaded as SARIF to GitHub code scanning: that requires
+# GitHub Code Security / Advanced Security on private repositories, which this
+# org does not pay for. Failing the build gives the same protection with no
+# billable surface, and behaves identically on public and private repos.
+
+on:
+  workflow_call:
+    inputs:
+      scan-ref:
+        description: Path to scan, relative to the repository root.
+        required: false
+        type: string
+        default: "."
+      scanners:
+        description: >-
+          Comma-separated Trivy scanners. "vuln" finds vulnerable dependencies,
+          "secret" finds committed credentials, "misconfig" finds IaC
+          misconfigurations (Terraform/OpenTofu, Dockerfiles, k8s manifests).
+        required: false
+        type: string
+        default: "vuln,secret,misconfig"
+      severity:
+        description: Severities that fail the build. Lower ones are not reported.
+        required: false
+        type: string
+        default: "CRITICAL,HIGH"
+      ignore-unfixed:
+        description: >-
+          Skip vulnerabilities that have no fix available yet. Keeps the signal
+          actionable rather than reporting things you cannot do anything about.
+        required: false
+        type: boolean
+        default: true
+      skip-dirs:
+        description: Comma-separated directories to exclude from the scan.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  trivy:
+    name: Trivy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: aquasecurity/trivy-action@0.36.0
+        with:
+          scan-type: fs
+          scan-ref: ${{ inputs.scan-ref }}
+          scanners: ${{ inputs.scanners }}
+          severity: ${{ inputs.severity }}
+          ignore-unfixed: ${{ inputs.ignore-unfixed }}
+          skip-dirs: ${{ inputs.skip-dirs }}
+          format: table
+          exit-code: "1"
