@@ -29,6 +29,13 @@ on:
         required: false
         type: string
         default: "npm run lint"
+      package-manager:
+        description: >-
+          "npm" or "pnpm". pnpm workspaces need pnpm/action-setup before
+          setup-node so the store can be cached, and use a different lockfile.
+        required: false
+        type: string
+        default: "npm"
       packages:
         description: >-
           JSON array of {"directory": "...", "command": "..."} objects, one per
@@ -52,12 +59,25 @@ jobs:
         working-directory: ${{ inputs.lint-directory }}
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
+        if: inputs.package-manager == 'pnpm'
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - if: inputs.package-manager == 'pnpm'
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      - uses: actions/setup-node@v7
+        if: inputs.package-manager != 'pnpm'
         with:
           node-version: ${{ inputs.node-version }}
           cache: npm
           cache-dependency-path: ${{ inputs.lint-directory }}/package-lock.json
-      - run: npm ci
+      - if: inputs.package-manager != 'pnpm'
+        run: npm ci
       - run: ${{ inputs.lint-command }}
 
   check:
@@ -75,10 +95,25 @@ jobs:
         working-directory: ${{ matrix.package.directory }}
     steps:
       - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v4
+        if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
+        if: inputs.package-manager == 'pnpm'
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      # pnpm workspaces keep one lockfile at the repo root and install every
+      # workspace package from there, so this must not run in the package dir.
+      - if: inputs.package-manager == 'pnpm'
+        working-directory: .
+        run: pnpm install --frozen-lockfile
+      - uses: actions/setup-node@v7
+        if: inputs.package-manager != 'pnpm'
         with:
           node-version: ${{ inputs.node-version }}
           cache: npm
           cache-dependency-path: ${{ matrix.package.directory }}/package-lock.json
-      - run: npm ci
+      - if: inputs.package-manager != 'pnpm'
+        run: npm ci
       - run: ${{ matrix.package.command }}
