@@ -31,8 +31,9 @@ of the calling repository.
 
 | Name | Required | Default | Description |
 |---|---|---|---|
-| `working-directory` | yes | — | Directory holding the worker's wrangler config, `package.json` and `package-lock.json` |
+| `working-directory` | yes | — | Directory holding the worker's wrangler config and `package.json` |
 | `node-version` | no | `20` | Node.js version used for install and deploy |
+| `install-dependencies` | no | `true` | Run `npm ci` first. Set `false` for workers with no `package-lock.json` — `npm ci` hard-fails without one |
 
 **Secrets**
 

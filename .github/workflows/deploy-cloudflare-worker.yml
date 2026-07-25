@@ -22,6 +22,14 @@ on:
         required: false
         type: string
         default: "20"
+      install-dependencies:
+        description: >-
+          Run `npm ci` before deploying. Set false for workers that have no
+          package-lock.json and let wrangler bundle straight from source —
+          `npm ci` hard-fails without a lockfile.
+        required: false
+        type: boolean
+        default: true
     secrets:
       CLOUDFLARE_API_TOKEN:
         required: true
@@ -45,12 +53,14 @@ jobs:
       - uses: actions/checkout@v7
 
       - uses: actions/setup-node@v7
+        if: inputs.install-dependencies
         with:
           node-version: ${{ inputs.node-version }}
           cache: npm
           cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
 
-      - run: npm ci
+      - if: inputs.install-dependencies
+        run: npm ci
 
       - uses: cloudflare/wrangler-action@v4
         with:
