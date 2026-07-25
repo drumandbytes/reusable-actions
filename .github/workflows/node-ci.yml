@@ -42,6 +42,8 @@ on:
           package to check. Each entry gets its own job running `npm ci` in that
           directory followed by the given command, e.g.
           [{"directory":"api-worker","command":"npm run typecheck && npm test"}]
+          An optional "name" overrides the job name, useful when several entries
+          share a directory (e.g. a workspace root).
         required: false
         type: string
         default: "[]"
@@ -81,7 +83,7 @@ jobs:
       - run: ${{ inputs.lint-command }}
 
   check:
-    name: ${{ matrix.package.directory }}
+    name: ${{ matrix.package.name || matrix.package.directory }}
     # An empty packages array yields an empty matrix, which GitHub treats as an
     # error rather than a skip — so guard on it explicitly.
     if: inputs.packages != '[]'
