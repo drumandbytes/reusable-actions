@@ -1,0 +1,84 @@
+name: Node CI
+
+# Lint plus a per-package check matrix for repos holding several npm packages
+# in subdirectories. Replaces the ci.yml files in road-conditions-ee and
+# cloudflare-workers, which had the same shape (one root lint job, then one job
+# per package running typecheck and tests) and differed only in package names
+# and action versions.
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version used for every job.
+        required: false
+        type: string
+        default: "20"
+      run-lint:
+        description: Run the root-level lint job.
+        required: false
+        type: boolean
+        default: true
+      lint-directory:
+        description: Directory the lint job installs and runs in.
+        required: false
+        type: string
+        default: "."
+      lint-command:
+        description: Command the lint job runs.
+        required: false
+        type: string
+        default: "npm run lint"
+      packages:
+        description: >-
+          JSON array of {"directory": "...", "command": "..."} objects, one per
+          package to check. Each entry gets its own job running `npm ci` in that
+          directory followed by the given command, e.g.
+          [{"directory":"api-worker","command":"npm run typecheck && npm test"}]
+        required: false
+        type: string
+        default: "[]"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    if: inputs.run-lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.lint-directory }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.lint-directory }}/package-lock.json
+      - run: npm ci
+      - run: ${{ inputs.lint-command }}
+
+  check:
+    name: ${{ matrix.package.directory }}
+    # An empty packages array yields an empty matrix, which GitHub treats as an
+    # error rather than a skip — so guard on it explicitly.
+    if: inputs.packages != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package: ${{ fromJSON(inputs.packages) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.package.directory }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ matrix.package.directory }}/package-lock.json
+      - run: npm ci
+      - run: ${{ matrix.package.command }}
