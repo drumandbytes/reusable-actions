@@ -1,0 +1,59 @@
+name: Deploy Cloudflare Worker
+
+# Shared deploy for npm-based Cloudflare Workers living in a subdirectory of a
+# repo. Replaces six near-identical per-worker workflows across
+# cloudflare-workers and road-conditions-ee, which had drifted onto three
+# different action version sets.
+#
+# Everything repo-specific (which directory, which worker) arrives as an input
+# or secret from the caller, so this file stays generic.
+
+on:
+  workflow_call:
+    inputs:
+      working-directory:
+        description: >-
+          Directory containing the worker's wrangler config, package.json and
+          package-lock.json, relative to the repo root (e.g. "api-worker").
+        required: true
+        type: string
+      node-version:
+        description: Node.js version used to install dependencies and run wrangler.
+        required: false
+        type: string
+        default: "20"
+    secrets:
+      CLOUDFLARE_API_TOKEN:
+        required: true
+      CLOUDFLARE_ACCOUNT_ID:
+        required: true
+
+# Deploying needs no write access to the repo itself — auth to Cloudflare is via
+# the API token. Reusable workflows can only reduce the caller's permissions,
+# never elevate them, so this is a floor rather than a grant.
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy ${{ inputs.working-directory }}
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.working-directory }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: ${{ inputs.node-version }}
+          cache: npm
+          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+
+      - run: npm ci
+
+      - uses: cloudflare/wrangler-action@v4
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: ${{ inputs.working-directory }}
