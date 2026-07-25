@@ -1,0 +1,85 @@
+name: Auto merge
+
+# Enables auto-merge on a PR once its CI run has passed.
+#
+# Triggered from a caller's `workflow_run` rather than `pull_request` on
+# purpose: GitHub withholds Actions secrets and gives a read-only GITHUB_TOKEN
+# to Dependabot-triggered runs, so a `pull_request`-based job cannot merge them.
+# A `workflow_run` job executes in the base repository's context with full
+# permissions, which is what makes this work for Dependabot at all.
+#
+# There is deliberately no "approve the PR" step. The org ruleset requires a
+# pull request but zero approving reviews, so approval is unnecessary — and
+# GitHub Actions is blocked from approving PRs org-wide
+# (can_approve_pull_request_reviews = false), which is a deliberate hardening
+# choice we do not want to reverse just to satisfy a decorative step.
+
+on:
+  workflow_call:
+    inputs:
+      allowed-authors:
+        description: >-
+          JSON array of PR authors eligible for auto-merge. Defaults to
+          Dependabot only. Widening this on a public repository would
+          auto-merge outside contributions — do not do that casually.
+        required: false
+        type: string
+        default: '["dependabot[bot]"]'
+      merge-method:
+        description: One of squash, merge, rebase.
+        required: false
+        type: string
+        default: squash
+
+jobs:
+  auto-merge:
+    name: Auto merge
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Resolve PR and check author
+        id: pr
+        uses: actions/github-script@v9
+        env:
+          ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
+        with:
+          script: |
+            const run = context.payload.workflow_run;
+            const prs = await github.rest.pulls.list({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              state: 'open',
+              head: `${run.head_repository.owner.login}:${run.head_branch}`,
+            });
+            if (prs.data.length === 0) {
+              core.info('No open PR for this branch; nothing to merge.');
+              core.setOutput('eligible', 'false');
+              return;
+            }
+            const pr = prs.data[0];
+            const allowed = JSON.parse(process.env.ALLOWED_AUTHORS);
+            if (!allowed.includes(pr.user.login)) {
+              core.info(`PR #${pr.number} author "${pr.user.login}" is not in the allow-list ${JSON.stringify(allowed)}; skipping.`);
+              core.setOutput('eligible', 'false');
+              return;
+            }
+            core.info(`PR #${pr.number} by ${pr.user.login} is eligible.`);
+            core.setOutput('eligible', 'true');
+            core.setOutput('number', String(pr.number));
+
+      - name: Enable auto-merge
+        if: steps.pr.outputs.eligible == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_METHOD: ${{ inputs.merge-method }}
+          PR_NUMBER: ${{ steps.pr.outputs.number }}
+        # Values are passed through the environment rather than interpolated
+        # into the command, so a caller cannot inject shell.
+        run: |
+          case "$MERGE_METHOD" in
+            squash|merge|rebase) ;;
+            *) echo "::error::invalid merge-method: $MERGE_METHOD"; exit 1 ;;
+          esac
+          gh pr merge "$PR_NUMBER" --auto "--$MERGE_METHOD" --repo "$GITHUB_REPOSITORY"
