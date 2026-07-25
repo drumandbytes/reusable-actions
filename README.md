@@ -95,6 +95,50 @@ jobs:
     uses: drumandbytes/reusable-actions/.github/workflows/security-scan.yml@v1
 ```
 
+### `auto-merge.yml`
+
+Enables auto-merge on a PR once its CI run has passed. Defaults to
+**Dependabot only**.
+
+Called from a `workflow_run` trigger, not `pull_request`: GitHub gives
+Dependabot-triggered runs a read-only token and no secrets, so a
+`pull_request` job cannot merge them. A `workflow_run` job executes in the base
+repository's context with full permissions.
+
+There is no "approve" step — the org ruleset requires zero approving reviews,
+and Actions is blocked from approving PRs org-wide by design.
+
+**Inputs**
+
+| Name | Required | Default | Description |
+|---|---|---|---|
+| `allowed-authors` | no | `["dependabot[bot]"]` | JSON array of eligible PR authors |
+| `merge-method` | no | `squash` | `squash`, `merge` or `rebase` |
+
+> Widening `allowed-authors` on a public repository would auto-merge outside
+> contributions. Don't.
+
+```yaml
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+jobs:
+  auto-merge:
+    permissions:        # the caller must grant these; a reusable workflow
+      contents: write   # cannot exceed the caller's permissions, and the org
+      pull-requests: write  # default for GITHUB_TOKEN is read-only
+    if: >
+      github.event.workflow_run.event == 'pull_request' &&
+      github.event.workflow_run.conclusion == 'success'
+    uses: drumandbytes/reusable-actions/.github/workflows/auto-merge.yml@v1
+```
+
+Keep the security scan in a **separate workflow** from CI. Auto-merge gates on
+the CI workflow's conclusion, so a scan inside CI means a vulnerability in one
+package blocks merging a Dependabot PR that fixes a different one.
+
 ### `opentofu-validate.yml`
 
 Runs `tofu fmt -check -recursive` and `tofu validate` against a root module.
