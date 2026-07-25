@@ -95,6 +95,44 @@ jobs:
     uses: drumandbytes/reusable-actions/.github/workflows/security-scan.yml@v1
 ```
 
+### `deploy-cloudflare-pages.yml`
+
+Builds and deploys a Cloudflare Pages site. Defaults target a Vite-style app
+(npm install, build to `dist/`), so a typical caller passes only
+`project-name`.
+
+**Inputs**
+
+| Name | Required | Default | Description |
+|---|---|---|---|
+| `project-name` | yes | — | Cloudflare Pages project to deploy to |
+| `working-directory` | no | `.` | Directory containing the site |
+| `install-dependencies` | no | `true` | Run `npm ci` first; `false` for static sites with no lockfile |
+| `build-command` | no | `npm run build` | Command run before deploy; empty string deploys sources as-is |
+| `output-directory` | no | `dist` | Directory wrangler publishes, relative to `working-directory` |
+| `node-version` | no | `20` | Node.js version |
+| `build-env` | no | `{}` | JSON object of build-time env vars, e.g. Vite `VITE_*` values |
+
+Callers must grant `deployments: write` so wrangler can record a GitHub
+Deployment — a reusable workflow cannot elevate the caller's permissions.
+
+```yaml
+jobs:
+  deploy:
+    permissions:
+      contents: read
+      deployments: write
+    uses: drumandbytes/reusable-actions/.github/workflows/deploy-cloudflare-pages.yml@v1
+    with:
+      project-name: my-site
+      working-directory: frontend
+      build-env: >-
+        {"VITE_API_BASE_URL": "${{ vars.VITE_API_BASE_URL }}"}
+    secrets:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+```
+
 ### `auto-merge.yml`
 
 Enables auto-merge on a PR once its CI run has passed. Defaults to
