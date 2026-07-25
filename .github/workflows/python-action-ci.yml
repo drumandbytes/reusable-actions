@@ -73,6 +73,10 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: ${{ inputs.python-version }}
+      # setup-python provides a clean interpreter, unlike the runner's system
+      # Python which ships PyYAML — so install it explicitly rather than
+      # depending on whatever the image happens to preinstall.
+      - run: pip install pyyaml
       - name: Validate action.yml is parseable YAML
         run: python -c "import yaml,sys; yaml.safe_load(open('action.yml')); print('action.yml is valid YAML')"
       - name: Check required files exist
