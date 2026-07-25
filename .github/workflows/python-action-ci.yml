@@ -1,0 +1,92 @@
+name: Python action CI
+
+# Lint, test and structural checks for a repository that ships a GitHub Action
+# implemented in Python. Replaces the near-identical ci.yml files in
+# argocd-gitops-updater-action and opentofu-updater-action, which differed only
+# in their dependency lists, script paths and required-file checks.
+
+on:
+  workflow_call:
+    inputs:
+      python-version:
+        description: Python version used for lint and tests.
+        required: false
+        type: string
+        default: "3.12"
+      lint-paths:
+        description: Space-separated paths passed to ruff.
+        required: false
+        type: string
+        default: ".github/scripts/"
+      test-dependencies:
+        description: >-
+          Space-separated pip requirements installed before running tests, e.g.
+          "pytest pytest-asyncio pyyaml". Quote specifiers that contain
+          shell-significant characters.
+        required: true
+        type: string
+      test-command:
+        description: Command used to run the test suite.
+        required: false
+        type: string
+        default: "pytest tests/ -v"
+      required-files:
+        description: >-
+          Newline-separated paths that must exist in the repository. Catches a
+          renamed or deleted script that tests alone would not notice.
+        required: false
+        type: string
+        default: "action.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - run: pip install ruff
+      - run: ruff check ${{ inputs.lint-paths }}
+      - run: ruff format --check ${{ inputs.lint-paths }}
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - run: pip install ${{ inputs.test-dependencies }}
+      - run: ${{ inputs.test-command }}
+
+  validate-action:
+    name: Validate action
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v6
+        with:
+          python-version: ${{ inputs.python-version }}
+      - name: Validate action.yml is parseable YAML
+        run: python -c "import yaml,sys; yaml.safe_load(open('action.yml')); print('action.yml is valid YAML')"
+      - name: Check required files exist
+        env:
+          REQUIRED_FILES: ${{ inputs.required-files }}
+        run: |
+          status=0
+          while IFS= read -r f; do
+            [ -z "$f" ] && continue
+            if [ -e "$f" ]; then
+              echo "ok      $f"
+            else
+              echo "MISSING $f"
+              status=1
+            fi
+          done <<< "$REQUIRED_FILES"
+          exit $status
