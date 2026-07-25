@@ -22,7 +22,7 @@ on:
       install-dependencies:
         description: >-
           Run `npm ci` before building. Set false for static sites with no
-          package-lock.json — `npm ci` hard-fails without a lockfile.
+          package-lock.json — `npm ci` hard-fails without one.
         required: false
         type: boolean
         default: true
@@ -49,8 +49,7 @@ on:
         description: >-
           JSON object of environment variables exported before the build, for
           build-time config such as Vite's VITE_* values. The caller
-          interpolates them, e.g.
-          {"VITE_API_BASE_URL": "${{ vars.VITE_API_BASE_URL }}"}
+          interpolates the values.
         required: false
         type: string
         default: "{}"
@@ -60,16 +59,13 @@ on:
       CLOUDFLARE_ACCOUNT_ID:
         required: true
 
+permissions:
+  contents: read
+
 jobs:
   deploy:
     name: Deploy ${{ inputs.project-name }}
     runs-on: ubuntu-latest
-    # deployments: write lets wrangler record a GitHub Deployment, so the
-    # environment shows up on the repo. The caller must grant it — a reusable
-    # workflow can only reduce the caller's permissions, never elevate them.
-    permissions:
-      contents: read
-      deployments: write
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
@@ -86,30 +82,22 @@ jobs:
       - if: inputs.install-dependencies
         run: npm ci
 
-      # Written via $GITHUB_ENV rather than interpolated into the run block, so
-      # a value containing shell metacharacters cannot break out. The random
-      # delimiter keeps multi-line values intact.
-      - name: Export build environment
-        if: inputs.build-env != '{}'
-        env:
-          BUILD_ENV: ${{ inputs.build-env }}
-        run: |
-          delim="EOF_$(openssl rand -hex 8)"
-          echo "$BUILD_ENV" | jq -r 'to_entries[] | @json "\(.key)"' | while IFS= read -r raw; do
-            key=$(printf '%s' "$raw" | jq -r .)
-            printf '%s<<%s\n' "$key" "$delim" >> "$GITHUB_ENV"
-            printf '%s' "$BUILD_ENV" | jq -r --arg k "$key" '.[$k]' >> "$GITHUB_ENV"
-            printf '%s\n' "$delim" >> "$GITHUB_ENV"
-          done
-
       - name: Build
         if: inputs.build-command != ''
-        run: ${{ inputs.build-command }}
+        env:
+          BUILD_ENV_JSON: ${{ inputs.build-env }}
+        # build-env is passed through the environment and quoted with jq's @sh
+        # before eval, so a value containing shell metacharacters cannot break
+        # out of its assignment.
+        run: |
+          set -a
+          eval "$(printf '%s' "$BUILD_ENV_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value|@sh)"')"
+          set +a
+          ${{ inputs.build-command }}
 
       - uses: cloudflare/wrangler-action@v4
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: ${{ inputs.working-directory }}
-          gitHubToken: ${{ secrets.GITHUB_TOKEN }}
           command: pages deploy ${{ inputs.output-directory }} --project-name=${{ inputs.project-name }}
