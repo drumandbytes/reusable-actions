@@ -61,7 +61,7 @@ jobs:
         working-directory: ${{ inputs.lint-directory }}
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
         if: inputs.package-manager == 'pnpm'
@@ -97,7 +97,7 @@ jobs:
         working-directory: ${{ matrix.package.directory }}
     steps:
       - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@v6
         if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
         if: inputs.package-manager == 'pnpm'
