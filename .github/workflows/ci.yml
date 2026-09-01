@@ -1,0 +1,33 @@
+name: CI
+
+# This repo's actual content is its workflow_call definitions - every file
+# in workflows/ is a reusable workflow other repos consume, not something
+# that runs here directly. actionlint validates that YAML/expression syntax
+# (including workflow_call inputs/outputs) so a broken definition is caught
+# here, not silently in every consuming repo's next run.
+
+on:
+  push:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**.md'
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  actionlint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Install actionlint
+        run: |
+          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+
+      - run: ./actionlint -color
