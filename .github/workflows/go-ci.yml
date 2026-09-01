@@ -1,0 +1,101 @@
+name: Go CI
+
+# Build, vet, format check, test, golangci-lint, and (optionally) hadolint for
+# a Go repository. Replaces the near-identical ci.yml/validate.yml files in
+# eraser, nordvpn, and pve-metrics-exporter, which differed only in Go
+# version, whether tests ran with -race, whether golangci-lint was included,
+# and whether there was a Dockerfile to hadolint.
+
+on:
+  workflow_call:
+    inputs:
+      go-version:
+        description: Go version used for every job.
+        required: true
+        type: string
+      test-race:
+        description: Run `go test` with the race detector.
+        required: false
+        type: boolean
+        default: false
+      run-golangci-lint:
+        description: Run golangci-lint in a separate job.
+        required: false
+        type: boolean
+        default: true
+      golangci-lint-version:
+        description: >-
+          Version tag for golangci-lint-action. "latest" resolves to the
+          current v2.x line - v6 of this action resolved "latest" to an old
+          v1.x binary built with an older Go toolchain, which then refused to
+          lint a newer module (confirmed: v9 correctly resolves to v2.x).
+        required: false
+        type: string
+        default: "latest"
+      dockerfile-path:
+        description: >-
+          Path to a Dockerfile to lint with hadolint. Empty string (default)
+          skips the hadolint job entirely - not every Go repo this workflow
+          serves ships a container image.
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  build-test:
+    name: Build, vet, test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - name: Build
+        run: go build ./...
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: gofmt
+        run: |
+          unformatted=$(gofmt -l .)
+          if [ -n "$unformatted" ]; then
+            echo "The following files are not gofmt-formatted:"
+            echo "$unformatted"
+            echo "Run 'gofmt -w .' locally and commit the result."
+            exit 1
+          fi
+
+      - name: Test
+        run: go test ${{ inputs.test-race && '-race' || '' }} ./...
+
+  golangci-lint:
+    name: golangci-lint
+    if: inputs.run-golangci-lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version: ${{ inputs.go-version }}
+
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: ${{ inputs.golangci-lint-version }}
+
+  hadolint:
+    name: hadolint
+    if: inputs.dockerfile-path != ''
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: hadolint/hadolint-action@v3.5.0
+        with:
+          dockerfile: ${{ inputs.dockerfile-path }}
