@@ -1,0 +1,19 @@
+name: Release Please (self)
+
+# This repo dogfoods its own release-please.yml the same way every external
+# consumer does: through the tagged, released interface, not a local path
+# reference - so a break in what consumers actually get doesn't go unnoticed.
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  release-please:
+    permissions:
+      contents: write
+      pull-requests: write
+    uses: drumandbytes/reusable-actions/.github/workflows/release-please.yml@v1
+    with:
+      move-floating-tags: true
+    secrets: inherit

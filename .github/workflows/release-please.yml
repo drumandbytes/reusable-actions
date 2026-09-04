@@ -1,8 +1,25 @@
 name: Release Please
 
+# Cuts semver releases from Conventional Commits: opens/updates a release PR
+# with the version bump and CHANGELOG.md, then tags + publishes a GitHub
+# Release once that PR is merged. Expects release-please-config.json and
+# .release-please-manifest.json in the calling repo's root.
+
 on:
-  push:
-    branches: [main]
+  workflow_call:
+    inputs:
+      move-floating-tags:
+        description: >-
+          Move vN/vN.M convenience tags onto every new release. Only needed by
+          repos consumed as a reusable GitHub Action pinned like `@v1`.
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      DNB_ROBOT_CLIENT_ID:
+        required: true
+      AUTOMATION_APP_PRIVATE_KEY:
+        required: true
 
 permissions:
   contents: write
@@ -28,11 +45,11 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      # Consumers pin @v1 and expect it to follow patches/minors. Move it (and
-      # the vN.M convenience tag) onto every new release. This job has no
-      # checkout, so retarget the refs through the API. v5 root-component
-      # outputs are bare, not '.--'-prefixed.
-      - if: ${{ steps.release.outputs.release_created }}
+      # Consumers pin this repo's own release (or a caller's own tag) and
+      # expect vN/vN.M to follow patches/minors. This job has no checkout, so
+      # retarget the refs through the API. v5 root-component outputs are
+      # bare, not '.--'-prefixed.
+      - if: ${{ inputs.move-floating-tags && steps.release.outputs.release_created }}
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}
           REPO: ${{ github.repository }}
