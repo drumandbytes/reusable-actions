@@ -21,7 +21,7 @@ on:
         description: Node.js version used to install dependencies and run wrangler.
         required: false
         type: string
-        default: "20"
+        default: "24"
       install-dependencies:
         description: >-
           Run `npm ci` before deploying. Set false for workers that have no

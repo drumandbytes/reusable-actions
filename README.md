@@ -32,7 +32,7 @@ of the calling repository.
 | Name | Required | Default | Description |
 |---|---|---|---|
 | `working-directory` | yes | — | Directory holding the worker's wrangler config and `package.json` |
-| `node-version` | no | `20` | Node.js version used for install and deploy |
+| `node-version` | no | `24` | Node.js version used for install and deploy |
 | `install-dependencies` | no | `true` | Run `npm ci` first. Set `false` for workers with no `package-lock.json` — `npm ci` hard-fails without one |
 
 **Secrets**
@@ -110,7 +110,7 @@ Builds and deploys a Cloudflare Pages site. Defaults target a Vite-style app
 | `install-dependencies` | no | `true` | Run `npm ci` first; `false` for static sites with no lockfile |
 | `build-command` | no | `npm run build` | Command run before deploy; empty string deploys sources as-is |
 | `output-directory` | no | `dist` | Directory wrangler publishes, relative to `working-directory` |
-| `node-version` | no | `20` | Node.js version |
+| `node-version` | no | `24` | Node.js version |
 | `build-env` | no | `{}` | JSON object of build-time env vars, e.g. Vite `VITE_*` values |
 
 Callers must grant `deployments: write` so wrangler can record a GitHub
