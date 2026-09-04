@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.11.0](https://github.com/drumandbytes/reusable-actions/compare/v1.10.2...v1.11.0) (2026-09-04)
+
+
+### Features
+
+* **ci:** auto-merge patch-level release-please PRs only ([#14](https://github.com/drumandbytes/reusable-actions/issues/14)) ([0dfb2a0](https://github.com/drumandbytes/reusable-actions/commit/0dfb2a0a4c84e4ce436fa336746fed3a20a1724d))
+* **ci:** turn release-please.yml into a reusable workflow ([#13](https://github.com/drumandbytes/reusable-actions/issues/13)) ([d3157d5](https://github.com/drumandbytes/reusable-actions/commit/d3157d5f56af411d8324cea372e7c07f26a2694f))
+
 ## [1.10.2](https://github.com/drumandbytes/reusable-actions/compare/v1.10.1...v1.10.2) (2026-09-04)
 
 
