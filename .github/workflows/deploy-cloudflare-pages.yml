@@ -44,7 +44,7 @@ on:
         description: Node.js version used to install and build.
         required: false
         type: string
-        default: "20"
+        default: "24"
       build-env:
         description: >-
           JSON object of environment variables exported before the build, for
