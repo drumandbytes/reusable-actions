@@ -19,12 +19,22 @@ on:
     inputs:
       allowed-authors:
         description: >-
-          JSON array of PR authors eligible for auto-merge. Defaults to
-          Dependabot only. Widening this on a public repository would
-          auto-merge outside contributions — do not do that casually.
+          JSON array of PR authors eligible for auto-merge no matter what
+          they change. Defaults to Dependabot only. Widening this on a
+          public repository would auto-merge outside contributions — do not
+          do that casually.
         required: false
         type: string
         default: '["dependabot[bot]"]'
+      patch-only-authors:
+        description: >-
+          JSON array of PR authors eligible for auto-merge only when
+          .release-please-manifest.json's root (".") version is a patch bump
+          (major.minor unchanged) over the base branch. A minor/major bump
+          is left for manual review. For release-please's PR author.
+        required: false
+        type: string
+        default: '[]'
       merge-method:
         description: One of squash, merge, rebase.
         required: false
@@ -44,6 +54,7 @@ jobs:
         uses: actions/github-script@v9
         env:
           ALLOWED_AUTHORS: ${{ inputs.allowed-authors }}
+          PATCH_ONLY_AUTHORS: ${{ inputs.patch-only-authors }}
         with:
           script: |
             const run = context.payload.workflow_run;
@@ -59,15 +70,44 @@ jobs:
               return;
             }
             const pr = prs.data[0];
+
+            const setEligible = (ok, reason) => {
+              core.info(`PR #${pr.number} by ${pr.user.login}: ${reason}`);
+              core.setOutput('eligible', ok ? 'true' : 'false');
+              if (ok) core.setOutput('number', String(pr.number));
+            };
+
             const allowed = JSON.parse(process.env.ALLOWED_AUTHORS);
-            if (!allowed.includes(pr.user.login)) {
-              core.info(`PR #${pr.number} author "${pr.user.login}" is not in the allow-list ${JSON.stringify(allowed)}; skipping.`);
-              core.setOutput('eligible', 'false');
-              return;
+            if (allowed.includes(pr.user.login)) {
+              return setEligible(true, 'author is unconditionally allowed');
             }
-            core.info(`PR #${pr.number} by ${pr.user.login} is eligible.`);
-            core.setOutput('eligible', 'true');
-            core.setOutput('number', String(pr.number));
+
+            const patchOnly = JSON.parse(process.env.PATCH_ONLY_AUTHORS);
+            if (!patchOnly.includes(pr.user.login)) {
+              return setEligible(false, `author is not in allowed-authors (${JSON.stringify(allowed)}) or patch-only-authors (${JSON.stringify(patchOnly)})`);
+            }
+
+            // release-please keeps this file's root (".") version in sync
+            // with the PR title as it force-pushes over the life of the PR,
+            // so diffing it base vs. head is a stable way to size the bump
+            // without parsing the title.
+            const versionAt = async (ref) => {
+              const { data } = await github.rest.repos.getContent({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                path: '.release-please-manifest.json',
+                ref,
+              });
+              return JSON.parse(Buffer.from(data.content, 'base64').toString())['.'];
+            };
+            const [oldVersion, newVersion] = await Promise.all([
+              versionAt(pr.base.sha),
+              versionAt(pr.head.sha),
+            ]);
+            const [oldMajor, oldMinor] = oldVersion.split('.').map(Number);
+            const [newMajor, newMinor] = newVersion.split('.').map(Number);
+            const isPatch = oldMajor === newMajor && oldMinor === newMinor;
+            setEligible(isPatch, `${oldVersion} -> ${newVersion} is ${isPatch ? 'a patch bump' : 'a minor/major bump, needs manual review'}`);
 
       - name: Enable auto-merge
         if: steps.pr.outputs.eligible == 'true'

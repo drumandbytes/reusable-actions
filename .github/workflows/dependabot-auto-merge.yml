@@ -24,3 +24,5 @@ jobs:
     # which is the actual safety gate; a run with no open PR just no-ops.
     if: github.event.workflow_run.conclusion == 'success'
     uses: drumandbytes/reusable-actions/.github/workflows/auto-merge.yml@v1
+    with:
+      patch-only-authors: '["dnb-robot[bot]"]'
