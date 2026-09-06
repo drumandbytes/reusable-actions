@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.11.1](https://github.com/drumandbytes/reusable-actions/compare/v1.11.0...v1.11.1) (2026-09-06)
+
+
+### Bug Fixes
+
+* **auto-merge:** optional app-token merge, so release-please PRs actually cascade ([#16](https://github.com/drumandbytes/reusable-actions/issues/16)) ([98d8f50](https://github.com/drumandbytes/reusable-actions/commit/98d8f50cbd5394b7e799caec20f9f07fb75ff7a5))
+
 ## [1.11.0](https://github.com/drumandbytes/reusable-actions/compare/v1.10.2...v1.11.0) (2026-09-04)
 
 
