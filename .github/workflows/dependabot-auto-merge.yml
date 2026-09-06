@@ -26,3 +26,5 @@ jobs:
     uses: drumandbytes/reusable-actions/.github/workflows/auto-merge.yml@v1
     with:
       patch-only-authors: '["dnb-robot[bot]"]'
+      use-app-token-for-merge: true
+    secrets: inherit
