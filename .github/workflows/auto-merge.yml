@@ -40,6 +40,24 @@ on:
         required: false
         type: string
         default: squash
+      use-app-token-for-merge:
+        description: >-
+          Merge with a GitHub App installation token (DNB_ROBOT_CLIENT_ID /
+          AUTOMATION_APP_PRIVATE_KEY, both required if this is true) instead of
+          GITHUB_TOKEN. GitHub deliberately excludes GITHUB_TOKEN-authored
+          pushes from triggering further workflow runs — harmless for a plain
+          Dependabot merge, but it means a merged release-please PR never
+          re-triggers release-please to actually cut the tag/release, leaving
+          the manifest/changelog bumped with nothing built. Off by default:
+          every existing caller keeps today's behavior unless it opts in.
+        required: false
+        type: boolean
+        default: false
+    secrets:
+      DNB_ROBOT_CLIENT_ID:
+        required: false
+      AUTOMATION_APP_PRIVATE_KEY:
+        required: false
 
 jobs:
   auto-merge:
@@ -109,10 +127,18 @@ jobs:
             const isPatch = oldMajor === newMajor && oldMinor === newMinor;
             setEligible(isPatch, `${oldVersion} -> ${newVersion} is ${isPatch ? 'a patch bump' : 'a minor/major bump, needs manual review'}`);
 
+      - name: Mint app token for merge
+        if: steps.pr.outputs.eligible == 'true' && inputs.use-app-token-for-merge
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.DNB_ROBOT_CLIENT_ID }}
+          private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+
       - name: Enable auto-merge
         if: steps.pr.outputs.eligible == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ inputs.use-app-token-for-merge && steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           MERGE_METHOD: ${{ inputs.merge-method }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
         # Values are passed through the environment rather than interpolated
