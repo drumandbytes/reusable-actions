@@ -1,5 +1,17 @@
 # Changelog
 
+## [1.12.0](https://github.com/drumandbytes/reusable-actions/compare/v1.11.1...v1.12.0) (2026-09-07)
+
+
+### Features
+
+* read the node version from mise.toml when a caller has one ([#19](https://github.com/drumandbytes/reusable-actions/issues/19)) ([964034c](https://github.com/drumandbytes/reusable-actions/commit/964034c6c420f7e5e3437b10884369fd99dcd626))
+
+
+### Bug Fixes
+
+* **ci:** opt this repo's own auto-merge caller into use-app-token-for-merge ([1e55f7c](https://github.com/drumandbytes/reusable-actions/commit/1e55f7cf0c274c5304b18343bdd68534df4839c4))
+
 ## [1.11.1](https://github.com/drumandbytes/reusable-actions/compare/v1.11.0...v1.11.1) (2026-09-06)
 
 
