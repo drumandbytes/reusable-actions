@@ -71,11 +71,31 @@ jobs:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v7
+      - name: Resolve node version
+        id: node
+        # mise.toml is the source of truth for repos that have one, so a version
+        # lives in exactly one place instead of being repeated in every workflow
+        # that calls this. Falls back to the node-version input for the callers
+        # that have no mise.toml -- most of them, so this must stay a fallback
+        # rather than a requirement.
+        run: |
+          version="${{ inputs.node-version }}"
+          for f in mise.toml .mise.toml; do
+            if [ -f "$f" ]; then
+              pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
+              if [ -n "$pinned" ]; then
+                version="$pinned"
+                echo "Using node $version from $f"
+              fi
+              break
+            fi
+          done
+          echo "version=$version" >> "$GITHUB_OUTPUT"
 
       - uses: actions/setup-node@v7
         if: inputs.install-dependencies
         with:
-          node-version: ${{ inputs.node-version }}
+          node-version: ${{ steps.node.outputs.version }}
           cache: npm
           cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
 
