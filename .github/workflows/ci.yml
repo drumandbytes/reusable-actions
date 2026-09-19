@@ -7,10 +7,6 @@ name: CI
 # here, not silently in every consuming repo's next run.
 
 on:
-  push:
-    branches: [main]
-    paths-ignore:
-      - '**.md'
   pull_request:
     branches: [main]
     paths-ignore:
@@ -31,3 +27,14 @@ jobs:
           bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
 
       - run: ./actionlint -color
+
+  # Single stable name for the org's required-status-check ruleset to point
+  # at, regardless of how the real jobs above are split or renamed.
+  required-checks-passed:
+    name: Required checks passed
+    runs-on: ubuntu-latest
+    needs: [actionlint]
+    if: always()
+    steps:
+      - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')
+        run: exit 1
