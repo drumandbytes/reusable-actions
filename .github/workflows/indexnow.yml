@@ -1,22 +1,20 @@
 name: Submit to IndexNow
 
-# Tells IndexNow-participating engines (Bing, Yandex, Seznam, …) a site's
-# sitemap changed, right after a deploy. The key is public by design --
-# IndexNow's ownership proof is serving <key>.txt at the site root, not
-# keeping the key secret -- so it's hardcoded here rather than threaded
-# through every caller as a secret.
+# Pings IndexNow (Bing, Yandex, Seznam, …) with the sitemap after a deploy.
+# Key's not secret -- ownership proof is serving <key>.txt -- but callers
+# pass it via INDEXNOW_KEY so rotation doesn't mean editing this file.
 #
-# continue-on-error lives here, not in each caller, so a submission failure
-# can never turn into a failed deploy check no matter who calls this.
+# continue-on-error lives here so no caller's deploy can fail because of us.
 
 on:
   workflow_call:
     inputs:
       host:
-        description: >-
-          Hostname to submit, e.g. "eraser.drumandbytes.dev". Its
-          /sitemap.xml is fetched (one level of sitemap-index expansion) and
-          every <loc> submitted.
+        description: Hostname to submit, e.g. "eraser.drumandbytes.dev".
+        required: true
+        type: string
+      key:
+        description: IndexNow key -- pass the org's INDEXNOW_KEY variable.
         required: true
         type: string
 
@@ -32,9 +30,9 @@ jobs:
       - name: Submit sitemap URLs
         env:
           HOST: ${{ inputs.host }}
+          KEY: ${{ inputs.key }}
         run: |
           set -euo pipefail
-          KEY="655f7wqht4d6f46nsf4ht25njqcyx5dx"
 
           extract_locs() { grep -o '<loc>[^<]*</loc>' | sed -E 's#</?loc>##g'; }
 
