@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.0](https://github.com/drumandbytes/reusable-actions/compare/v1.12.1...v1.13.0) (2026-09-19)
+
+
+### Features
+
+* add reusable IndexNow submission workflow ([#23](https://github.com/drumandbytes/reusable-actions/issues/23)) ([a006d92](https://github.com/drumandbytes/reusable-actions/commit/a006d920d271e9eb83d11d8e5eea86fc1254a1e0))
+
 ## [1.12.1](https://github.com/drumandbytes/reusable-actions/compare/v1.12.0...v1.12.1) (2026-09-19)
 
 
