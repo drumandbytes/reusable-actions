@@ -36,14 +36,18 @@ jobs:
 
           extract_locs() { grep -o '<loc>[^<]*</loc>' | sed -E 's#</?loc>##g'; }
 
-          body=$(curl -sf "https://${HOST}/sitemap.xml")
+          # --retry-all-errors: this job starts the instant the deploy job
+          # reports done, which can be seconds ahead of the new deployment
+          # actually being live at the edge -- a bare curl -sf here 404s/523s
+          # more often than not.
+          body=$(curl -sf --retry 5 --retry-delay 6 --retry-all-errors "https://${HOST}/sitemap.xml")
           locs=$(printf '%s' "$body" | extract_locs)
 
           if printf '%s' "$body" | grep -q '<sitemapindex'; then
             urls=""
             while IFS= read -r sm; do
               [ -z "$sm" ] && continue
-              urls="$urls"$'\n'"$(curl -sf "$sm" | extract_locs)"
+              urls="$urls"$'\n'"$(curl -sf --retry 5 --retry-delay 6 --retry-all-errors "$sm" | extract_locs)"
             done <<< "$locs"
           else
             urls="$locs"
