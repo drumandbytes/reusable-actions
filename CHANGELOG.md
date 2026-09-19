@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.1](https://github.com/drumandbytes/reusable-actions/compare/v1.13.0...v1.13.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* retry the sitemap fetch, it races deploy propagation ([#25](https://github.com/drumandbytes/reusable-actions/issues/25)) ([b8ebd91](https://github.com/drumandbytes/reusable-actions/commit/b8ebd9174d2872a0cbad9be2ae0f13021428702f))
+
 ## [1.13.0](https://github.com/drumandbytes/reusable-actions/compare/v1.12.1...v1.13.0) (2026-09-19)
 
 
