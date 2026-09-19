@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.12.1](https://github.com/drumandbytes/reusable-actions/compare/v1.12.0...v1.12.1) (2026-09-19)
+
+
+### Bug Fixes
+
+* **deps:** bump the actions group with 2 updates ([#20](https://github.com/drumandbytes/reusable-actions/issues/20)) ([dc34cb0](https://github.com/drumandbytes/reusable-actions/commit/dc34cb0ad7aee7d22931689d3222207093b5fe76))
+
 ## [1.12.0](https://github.com/drumandbytes/reusable-actions/compare/v1.11.1...v1.12.0) (2026-09-07)
 
 
