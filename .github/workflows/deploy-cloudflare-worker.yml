@@ -30,6 +30,11 @@ on:
         required: false
         type: boolean
         default: true
+      runner:
+        description: runs-on value for this workflow's job.
+        required: false
+        type: string
+        default: "ubuntu-latest"
     secrets:
       CLOUDFLARE_API_TOKEN:
         required: true
@@ -45,7 +50,7 @@ permissions:
 jobs:
   deploy:
     name: Deploy ${{ inputs.working-directory }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}

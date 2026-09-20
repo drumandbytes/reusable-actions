@@ -17,6 +17,11 @@ on:
         description: IndexNow key -- pass the org's INDEXNOW_KEY variable.
         required: true
         type: string
+      runner:
+        description: runs-on value for this workflow's job.
+        required: false
+        type: string
+        default: "ubuntu-latest"
 
 permissions:
   contents: read
@@ -24,7 +29,7 @@ permissions:
 jobs:
   submit:
     name: IndexNow ${{ inputs.host }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     continue-on-error: true
     steps:
       - name: Submit sitemap URLs
