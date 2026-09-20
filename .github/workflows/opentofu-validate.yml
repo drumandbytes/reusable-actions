@@ -25,6 +25,11 @@ on:
         required: false
         type: boolean
         default: true
+      runner:
+        description: runs-on value for every job in this workflow.
+        required: false
+        type: string
+        default: "ubuntu-latest"
 
 permissions:
   contents: read
@@ -33,7 +38,7 @@ jobs:
   fmt:
     name: Format check
     if: inputs.check-format
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: opentofu/setup-opentofu@v2
@@ -44,7 +49,7 @@ jobs:
 
   validate:
     name: Validate
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@v7
       - uses: opentofu/setup-opentofu@v2

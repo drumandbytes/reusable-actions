@@ -15,6 +15,11 @@ on:
         required: false
         type: boolean
         default: false
+      runner:
+        description: runs-on value for this workflow's job.
+        required: false
+        type: string
+        default: "ubuntu-latest"
     secrets:
       DNB_ROBOT_CLIENT_ID:
         required: true
@@ -27,7 +32,7 @@ permissions:
 
 jobs:
   release-please:
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       # dnb-robot App token, not GITHUB_TOKEN: the release PR merge and the tag
       # pushes have to get past protecting-main's ruleset, which only bypasses

@@ -72,6 +72,11 @@ on:
         required: false
         type: string
         default: ""
+      runner:
+        description: runs-on value for this workflow's job.
+        required: false
+        type: string
+        default: "ubuntu-latest"
 
 permissions:
   contents: read
@@ -79,7 +84,7 @@ permissions:
 jobs:
   trivy:
     name: Trivy
-    runs-on: ubuntu-latest
+    runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@v7
 
@@ -94,6 +99,8 @@ jobs:
           file: ${{ inputs.dockerfile }}
           load: true
           tags: trivy-scan:latest
+          cache-from: type=gha,scope=${{ github.workflow }}-${{ github.job }}-${{ runner.arch }}
+          cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ github.job }}-${{ runner.arch }}
 
       - if: inputs.scan-type == 'fs'
         uses: aquasecurity/trivy-action@v0.36.0
@@ -117,3 +124,14 @@ jobs:
           ignore-unfixed: ${{ inputs.ignore-unfixed }}
           format: table
           exit-code: "1"
+
+      - name: Clean self-hosted runner Docker storage
+        if: ${{ always() && runner.environment == 'self-hosted' }}
+        shell: bash
+        run: |
+          docker compose down --volumes --remove-orphans 2>/dev/null || true
+          docker system prune --all --force --volumes
+          docker volume prune --all --force
+          docker buildx prune --all --force
+          echo "Storage after cleanup:"
+          docker system df
