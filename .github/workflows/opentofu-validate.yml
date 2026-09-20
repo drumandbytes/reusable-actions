@@ -41,6 +41,12 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@v7
+      # setup-opentofu needs unzip to extract its download; ubuntu-latest ships
+      # it, bare self-hosted runners may not — installed once per runner, not
+      # per job, so this is a no-op after the first run there.
+      - name: Ensure unzip is available
+        shell: bash
+        run: command -v unzip >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends unzip)
       - uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: ${{ inputs.tofu-version }}
@@ -52,6 +58,9 @@ jobs:
     runs-on: ${{ inputs.runner }}
     steps:
       - uses: actions/checkout@v7
+      - name: Ensure unzip is available
+        shell: bash
+        run: command -v unzip >/dev/null || (sudo apt-get update -qq && sudo apt-get install -y --no-install-recommends unzip)
       - uses: opentofu/setup-opentofu@v2
         with:
           tofu_version: ${{ inputs.tofu-version }}
