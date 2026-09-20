@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.14.0](https://github.com/drumandbytes/reusable-actions/compare/v1.13.2...v1.14.0) (2026-09-20)
+
+
+### Features
+
+* parameterize runner for self-hosted migration ([#30](https://github.com/drumandbytes/reusable-actions/issues/30)) ([c274846](https://github.com/drumandbytes/reusable-actions/commit/c27484659c2ad9fe0039627b53622abb312c1cff))
+
 ## [1.13.2](https://github.com/drumandbytes/reusable-actions/compare/v1.13.1...v1.13.2) (2026-09-20)
 
 
