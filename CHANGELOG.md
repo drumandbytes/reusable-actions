@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.13.2](https://github.com/drumandbytes/reusable-actions/compare/v1.13.1...v1.13.2) (2026-09-20)
+
+
+### Bug Fixes
+
+* stop path-filtering the workflow that hosts the required-check gate ([#28](https://github.com/drumandbytes/reusable-actions/issues/28)) ([809f84e](https://github.com/drumandbytes/reusable-actions/commit/809f84e032bd19a400883db70133e2f5233dc0b3))
+
 ## [1.13.1](https://github.com/drumandbytes/reusable-actions/compare/v1.13.0...v1.13.1) (2026-09-19)
 
 
