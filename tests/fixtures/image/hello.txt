@@ -1,0 +1,1 @@
+security-scan image-mode fixture

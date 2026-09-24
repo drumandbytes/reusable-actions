@@ -34,6 +34,17 @@ repo's own CI/release plumbing — no `workflow_call` trigger, not meant for
 callers. `ci.yml` runs actionlint and zizmor; accepted zizmor findings live in
 `.github/zizmor.yml` (or inline `# zizmor: ignore[...]`) with a reason each.
 
+## Shared steps and self-tests
+
+- `.github/actions/resolve-node-version/` is a composite action used by the
+  Node workflows via `uses: $/.github/...`. `$/` (GitHub, July 2026) resolves
+  to this repo at the running commit, so it stays in lockstep with the
+  workflow. It needs runner 2.336.0+, and actionlint 1.7.12 doesn't parse it,
+  hence the narrow `-ignore` in `ci.yml`.
+- `ci.yml` runs `node-ci`, `opentofu-validate` and `security-scan` (fs and
+  image) against `tests/fixtures/` via local `./` paths. Deploys, `go-ci` and
+  `python-action-ci` have no self-test (secrets / no subdirectory input).
+
 ## Action pinning
 
 Third-party actions are SHA-pinned with a `# vX.Y.Z` comment; `actions/*`

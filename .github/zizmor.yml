@@ -28,3 +28,10 @@ rules:
       - deploy-cloudflare-pages.yml
       - deploy-cloudflare-worker.yml
 
+  self-repository:
+    ignore:
+      # ci.yml's self-tests call the local reusable workflows with `./`, not
+      # `$/`: they only ever run in this repo, where both resolve to the same
+      # commit, and actionlint can only check a call's inputs against the
+      # called workflow through `./` (it doesn't understand `$/` yet).
+      - ci.yml

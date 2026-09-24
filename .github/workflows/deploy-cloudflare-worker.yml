@@ -69,41 +69,19 @@ jobs:
           persist-credentials: false
       - name: Resolve node version
         id: node
-        # mise.toml is the source of truth for repos that have one, so a version
-        # lives in exactly one place instead of being repeated in every workflow
-        # that calls this. Falls back to the node-version input for the callers
-        # that have no mise.toml -- most of them, so this must stay a fallback
-        # rather than a requirement.
-        #
-        # Walks from the working directory up to the repo root, nearest node pin
-        # wins -- the way mise itself resolves config, so a single root
-        # mise.toml covers packages and workers living in subdirectories.
-        env:
-          DEFAULT_NODE_VERSION: ${{ inputs.node-version }}
-        run: |
-          version="$DEFAULT_NODE_VERSION"
-          dir="$PWD"
-          while :; do
-            for f in "$dir/mise.toml" "$dir/.mise.toml"; do
-              [ -f "$f" ] || continue
-              pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
-              if [ -n "$pinned" ]; then
-                version="$pinned"
-                echo "Using node $version from ${f#"$GITHUB_WORKSPACE"/}"
-                break 2
-              fi
-            done
-            [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = / ] && break
-            dir=$(dirname "$dir")
-          done
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+        uses: $/.github/actions/resolve-node-version
+        with:
+          default: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.working-directory }}
 
+      # Always set up Node: wrangler needs it even when nothing is installed,
+      # and a bare self-hosted runner has none (or some other version). Only
+      # the npm cache depends on installing -- it hard-fails without a lockfile.
       - uses: actions/setup-node@v7
-        if: inputs.install-dependencies
         with:
           node-version: ${{ steps.node.outputs.version }}
-          cache: npm
-          cache-dependency-path: ${{ inputs.working-directory }}/package-lock.json
+          cache: ${{ inputs.install-dependencies && 'npm' || '' }}
+          cache-dependency-path: ${{ inputs.install-dependencies && format('{0}/package-lock.json', inputs.working-directory) || '' }}
 
       - if: inputs.install-dependencies
         run: npm ci

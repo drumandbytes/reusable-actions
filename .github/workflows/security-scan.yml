@@ -148,7 +148,6 @@ jobs:
         if: ${{ always() && runner.environment == 'self-hosted' }}
         shell: bash
         run: |
-          docker compose down --volumes --remove-orphans 2>/dev/null || true
           docker system prune --all --force --volumes
           docker volume prune --all --force
           docker buildx prune --all --force

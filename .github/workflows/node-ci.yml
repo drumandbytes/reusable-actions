@@ -66,57 +66,37 @@ jobs:
       run:
         working-directory: ${{ inputs.lint-directory }}
     steps:
+      - name: Validate package-manager
+        # Runs before checkout, when the job's default working directory
+        # doesn't exist yet.
+        working-directory: .
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            npm|pnpm) ;;
+            *) echo "::error::package-manager must be \"npm\" or \"pnpm\", got \"$PACKAGE_MANAGER\""; exit 1 ;;
+          esac
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Resolve node version
         id: node
-        # mise.toml is the source of truth for repos that have one, so a version
-        # lives in exactly one place instead of being repeated in every workflow
-        # that calls this. Falls back to the node-version input for the callers
-        # that have no mise.toml -- most of them, so this must stay a fallback
-        # rather than a requirement.
-        #
-        # Walks from the working directory up to the repo root, nearest node pin
-        # wins -- the way mise itself resolves config, so a single root
-        # mise.toml covers packages and workers living in subdirectories.
-        env:
-          DEFAULT_NODE_VERSION: ${{ inputs.node-version }}
-        run: |
-          version="$DEFAULT_NODE_VERSION"
-          dir="$PWD"
-          while :; do
-            for f in "$dir/mise.toml" "$dir/.mise.toml"; do
-              [ -f "$f" ] || continue
-              pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
-              if [ -n "$pinned" ]; then
-                version="$pinned"
-                echo "Using node $version from ${f#"$GITHUB_WORKSPACE"/}"
-                break 2
-              fi
-            done
-            [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = / ] && break
-            dir=$(dirname "$dir")
-          done
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+        uses: $/.github/actions/resolve-node-version
+        with:
+          default: ${{ inputs.node-version }}
+          working-directory: ${{ inputs.lint-directory }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
-        if: inputs.package-manager == 'pnpm'
         with:
           node-version: ${{ steps.node.outputs.version }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.package-manager == 'pnpm' && 'pnpm-lock.yaml' || format('{0}/package-lock.json', inputs.lint-directory) }}
       - if: inputs.package-manager == 'pnpm'
         working-directory: .
         run: pnpm install --frozen-lockfile
-      - uses: actions/setup-node@v7
-        if: inputs.package-manager != 'pnpm'
-        with:
-          node-version: ${{ steps.node.outputs.version }}
-          cache: npm
-          cache-dependency-path: ${{ inputs.lint-directory }}/package-lock.json
-      - if: inputs.package-manager != 'pnpm'
+      - if: inputs.package-manager == 'npm'
         run: npm ci
       - run: ${{ inputs.lint-command }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
 
@@ -137,58 +117,38 @@ jobs:
       run:
         working-directory: ${{ matrix.package.directory }}
     steps:
+      - name: Validate package-manager
+        # Runs before checkout, when the job's default working directory
+        # doesn't exist yet.
+        working-directory: .
+        env:
+          PACKAGE_MANAGER: ${{ inputs.package-manager }}
+        run: |
+          case "$PACKAGE_MANAGER" in
+            npm|pnpm) ;;
+            *) echo "::error::package-manager must be \"npm\" or \"pnpm\", got \"$PACKAGE_MANAGER\""; exit 1 ;;
+          esac
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
       - name: Resolve node version
         id: node
-        # mise.toml is the source of truth for repos that have one, so a version
-        # lives in exactly one place instead of being repeated in every workflow
-        # that calls this. Falls back to the node-version input for the callers
-        # that have no mise.toml -- most of them, so this must stay a fallback
-        # rather than a requirement.
-        #
-        # Walks from the working directory up to the repo root, nearest node pin
-        # wins -- the way mise itself resolves config, so a single root
-        # mise.toml covers packages and workers living in subdirectories.
-        env:
-          DEFAULT_NODE_VERSION: ${{ inputs.node-version }}
-        run: |
-          version="$DEFAULT_NODE_VERSION"
-          dir="$PWD"
-          while :; do
-            for f in "$dir/mise.toml" "$dir/.mise.toml"; do
-              [ -f "$f" ] || continue
-              pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
-              if [ -n "$pinned" ]; then
-                version="$pinned"
-                echo "Using node $version from ${f#"$GITHUB_WORKSPACE"/}"
-                break 2
-              fi
-            done
-            [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = / ] && break
-            dir=$(dirname "$dir")
-          done
-          echo "version=$version" >> "$GITHUB_OUTPUT"
+        uses: $/.github/actions/resolve-node-version
+        with:
+          default: ${{ inputs.node-version }}
+          working-directory: ${{ matrix.package.directory }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
-        if: inputs.package-manager == 'pnpm'
         with:
           node-version: ${{ steps.node.outputs.version }}
-          cache: pnpm
-          cache-dependency-path: pnpm-lock.yaml
+          cache: ${{ inputs.package-manager }}
+          cache-dependency-path: ${{ inputs.package-manager == 'pnpm' && 'pnpm-lock.yaml' || format('{0}/package-lock.json', matrix.package.directory) }}
       # pnpm workspaces keep one lockfile at the repo root and install every
       # workspace package from there, so this must not run in the package dir.
       - if: inputs.package-manager == 'pnpm'
         working-directory: .
         run: pnpm install --frozen-lockfile
-      - uses: actions/setup-node@v7
-        if: inputs.package-manager != 'pnpm'
-        with:
-          node-version: ${{ steps.node.outputs.version }}
-          cache: npm
-          cache-dependency-path: ${{ matrix.package.directory }}/package-lock.json
-      - if: inputs.package-manager != 'pnpm'
+      - if: inputs.package-manager == 'npm'
         run: npm ci
       - run: ${{ matrix.package.command }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
