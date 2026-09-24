@@ -61,11 +61,14 @@ jobs:
     name: Lint
     if: inputs.run-lint
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     defaults:
       run:
         working-directory: ${{ inputs.lint-directory }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Resolve node version
         id: node
         # mise.toml is the source of truth for repos that have one, so a version
@@ -73,20 +76,30 @@ jobs:
         # that calls this. Falls back to the node-version input for the callers
         # that have no mise.toml -- most of them, so this must stay a fallback
         # rather than a requirement.
+        #
+        # Walks from the working directory up to the repo root, nearest node pin
+        # wins -- the way mise itself resolves config, so a single root
+        # mise.toml covers packages and workers living in subdirectories.
+        env:
+          DEFAULT_NODE_VERSION: ${{ inputs.node-version }}
         run: |
-          version="${{ inputs.node-version }}"
-          for f in mise.toml .mise.toml; do
-            if [ -f "$f" ]; then
+          version="$DEFAULT_NODE_VERSION"
+          dir="$PWD"
+          while :; do
+            for f in "$dir/mise.toml" "$dir/.mise.toml"; do
+              [ -f "$f" ] || continue
               pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
               if [ -n "$pinned" ]; then
                 version="$pinned"
-                echo "Using node $version from $f"
+                echo "Using node $version from ${f#"$GITHUB_WORKSPACE"/}"
+                break 2
               fi
-              break
-            fi
+            done
+            [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = / ] && break
+            dir=$(dirname "$dir")
           done
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
         if: inputs.package-manager == 'pnpm'
@@ -105,14 +118,17 @@ jobs:
           cache-dependency-path: ${{ inputs.lint-directory }}/package-lock.json
       - if: inputs.package-manager != 'pnpm'
         run: npm ci
-      - run: ${{ inputs.lint-command }}
+      - run: ${{ inputs.lint-command }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
 
   check:
     name: ${{ matrix.package.name || matrix.package.directory }}
     # An empty packages array yields an empty matrix, which GitHub treats as an
-    # error rather than a skip — so guard on it explicitly.
-    if: inputs.packages != '[]'
+    # error rather than a skip — so guard on it explicitly. Checks the parsed
+    # array, not the raw string, so "[ ]" or a `|` block's trailing newline
+    # still counts as empty.
+    if: fromJSON(inputs.packages)[0] != null
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     strategy:
       fail-fast: false
       matrix:
@@ -122,6 +138,8 @@ jobs:
         working-directory: ${{ matrix.package.directory }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Resolve node version
         id: node
         # mise.toml is the source of truth for repos that have one, so a version
@@ -129,20 +147,30 @@ jobs:
         # that calls this. Falls back to the node-version input for the callers
         # that have no mise.toml -- most of them, so this must stay a fallback
         # rather than a requirement.
+        #
+        # Walks from the working directory up to the repo root, nearest node pin
+        # wins -- the way mise itself resolves config, so a single root
+        # mise.toml covers packages and workers living in subdirectories.
+        env:
+          DEFAULT_NODE_VERSION: ${{ inputs.node-version }}
         run: |
-          version="${{ inputs.node-version }}"
-          for f in mise.toml .mise.toml; do
-            if [ -f "$f" ]; then
+          version="$DEFAULT_NODE_VERSION"
+          dir="$PWD"
+          while :; do
+            for f in "$dir/mise.toml" "$dir/.mise.toml"; do
+              [ -f "$f" ] || continue
               pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
               if [ -n "$pinned" ]; then
                 version="$pinned"
-                echo "Using node $version from $f"
+                echo "Using node $version from ${f#"$GITHUB_WORKSPACE"/}"
+                break 2
               fi
-              break
-            fi
+            done
+            [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = / ] && break
+            dir=$(dirname "$dir")
           done
           echo "version=$version" >> "$GITHUB_OUTPUT"
-      - uses: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0977fd99725f1db4007ccb2928dbb4e90d06cc86 # v6.0.10
         if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
         if: inputs.package-manager == 'pnpm'
@@ -163,4 +191,4 @@ jobs:
           cache-dependency-path: ${{ matrix.package.directory }}/package-lock.json
       - if: inputs.package-manager != 'pnpm'
         run: npm ci
-      - run: ${{ matrix.package.command }}
+      - run: ${{ matrix.package.command }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design

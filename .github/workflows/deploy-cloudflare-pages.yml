@@ -71,11 +71,22 @@ jobs:
   deploy:
     name: Deploy ${{ inputs.project-name }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
+    # Two quick merges would otherwise deploy side by side, and whichever
+    # finishes last stays live -- possibly the older one. Queue per target and
+    # ref instead: cancel-in-progress stays false so a deploy is never cut off
+    # halfway, and GitHub keeps only the newest pending run. The ref keeps a
+    # preview deploy from displacing a queued production one.
+    concurrency:
+      group: cloudflare-pages-deploy-${{ inputs.project-name }}-${{ github.ref }}
+      cancel-in-progress: false
     defaults:
       run:
         working-directory: ${{ inputs.working-directory }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - name: Resolve node version
         id: node
         # mise.toml is the source of truth for repos that have one, so a version
@@ -83,17 +94,27 @@ jobs:
         # that calls this. Falls back to the node-version input for the callers
         # that have no mise.toml -- most of them, so this must stay a fallback
         # rather than a requirement.
+        #
+        # Walks from the working directory up to the repo root, nearest node pin
+        # wins -- the way mise itself resolves config, so a single root
+        # mise.toml covers packages and workers living in subdirectories.
+        env:
+          DEFAULT_NODE_VERSION: ${{ inputs.node-version }}
         run: |
-          version="${{ inputs.node-version }}"
-          for f in mise.toml .mise.toml; do
-            if [ -f "$f" ]; then
+          version="$DEFAULT_NODE_VERSION"
+          dir="$PWD"
+          while :; do
+            for f in "$dir/mise.toml" "$dir/.mise.toml"; do
+              [ -f "$f" ] || continue
               pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
               if [ -n "$pinned" ]; then
                 version="$pinned"
-                echo "Using node $version from $f"
+                echo "Using node $version from ${f#"$GITHUB_WORKSPACE"/}"
+                break 2
               fi
-              break
-            fi
+            done
+            [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = / ] && break
+            dir=$(dirname "$dir")
           done
           echo "version=$version" >> "$GITHUB_OUTPUT"
 
@@ -111,16 +132,19 @@ jobs:
         if: inputs.build-command != ''
         env:
           BUILD_ENV_JSON: ${{ inputs.build-env }}
+          BUILD_COMMAND: ${{ inputs.build-command }}
         # build-env is passed through the environment and quoted with jq's @sh
         # before eval, so a value containing shell metacharacters cannot break
-        # out of its assignment.
+        # out of its assignment. build-command is meant to run as shell, so it
+        # is eval'd as-is -- through the environment only so an expression
+        # expansion can't splice into the lines around it.
         run: |
           set -a
           eval "$(printf '%s' "$BUILD_ENV_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value|@sh)"')"
           set +a
-          ${{ inputs.build-command }}
+          eval "$BUILD_COMMAND"
 
-      - uses: cloudflare/wrangler-action@v4
+      - uses: cloudflare/wrangler-action@25853364521e0d392ece9b0c1e97a4b37b638087 # v4.1.2
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}

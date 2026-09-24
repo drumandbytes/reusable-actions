@@ -85,25 +85,44 @@ jobs:
   trivy:
     name: Trivy
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     steps:
+      # Every scan step below matches on exactly "fs" or "image", so any other
+      # value (a typo, different casing) would skip them all and pass green
+      # with nothing scanned.
+      - name: Validate scan-type
+        env:
+          SCAN_TYPE: ${{ inputs.scan-type }}
+        run: |
+          case "$SCAN_TYPE" in
+            fs|image) ;;
+            *) echo "::error::scan-type must be \"fs\" or \"image\", got \"$SCAN_TYPE\""; exit 1 ;;
+          esac
+
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - if: inputs.scan-type == 'image'
-        uses: docker/setup-buildx-action@v4.4.1
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
       - name: Build image to scan
         if: inputs.scan-type == 'image'
-        uses: docker/build-push-action@v7.4.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: ${{ inputs.image-context }}
           file: ${{ inputs.dockerfile }}
           load: true
           tags: trivy-scan:latest
           cache-from: type=gha,scope=${{ github.workflow }}-${{ github.job }}-${{ runner.arch }}
-          cache-to: type=gha,mode=max,scope=${{ github.workflow }}-${{ github.job }}-${{ runner.arch }}
+          # Written from the default branch only. PR runs can still read it
+          # (branch caches fall back to the default branch's), but a mode=max
+          # export of every layer on every PR run eats the repo's 10 GB cache
+          # quota and evicts the entries that are actually reused.
+          cache-to: ${{ github.ref_name == github.event.repository.default_branch && format('type=gha,mode=max,scope={0}-{1}-{2}', github.workflow, github.job, runner.arch) || '' }}
 
       - if: inputs.scan-type == 'fs'
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: fs
           scan-ref: ${{ inputs.scan-ref }}
@@ -115,7 +134,7 @@ jobs:
           exit-code: "1"
 
       - if: inputs.scan-type == 'image'
-        uses: aquasecurity/trivy-action@v0.36.0
+        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
           scan-type: image
           image-ref: trivy-scan:latest

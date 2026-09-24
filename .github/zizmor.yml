@@ -1,0 +1,38 @@
+# zizmor configuration for this repo's CI (ci.yml's zizmor job). Anything
+# accepted here is accepted on purpose -- each entry says why.
+
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        # GitHub's own actions stay on major tags so Dependabot keeps moving
+        # them with no weekly PR per patch; everything third-party is
+        # SHA-pinned, since a hijacked tag there would run in every org repo.
+        "actions/*": ref-pin
+        # This repo dogfoods its own reusable workflows through the released
+        # @v1 tag on purpose, the same way every caller does.
+        "drumandbytes/*": ref-pin
+        "*": hash-pin
+
+  dangerous-triggers:
+    ignore:
+      # workflow_run is required so Dependabot PRs get a token that can
+      # merge (see auto-merge.yml). It never checks out or runs PR code.
+      - dependabot-auto-merge.yml
+
+  cache-poisoning:
+    ignore:
+      # The only cache is setup-node's npm download cache, and `npm ci`
+      # checks every tarball against the lockfile's integrity hashes, so a
+      # poisoned entry fails the install instead of shipping.
+      - deploy-cloudflare-pages.yml
+      - deploy-cloudflare-worker.yml
+
+  github-app:
+    ignore:
+      # TODO: scope down with permission-* inputs, as auto-merge.yml does.
+      # Held back because release-please's README asks for issues: write
+      # (for its autorelease labels) and it's unconfirmed the dnb-robot app
+      # holds that -- requesting a permission the app lacks fails token
+      # creation, which would stop releases in every repo at once.
+      - release-please.yml

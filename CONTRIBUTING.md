@@ -1,5 +1,23 @@
 # Contributing
 
+## Checks
+
+CI runs two linters over `.github/`; run them locally before pushing:
+
+```sh
+actionlint                  # workflow syntax, expressions, shellcheck on run: blocks
+zizmor --offline .          # workflow security audit
+```
+
+zizmor findings are fixed, not silenced. The exception is behavior that is
+intentional (a caller-supplied command, `workflow_run` for Dependabot): mark
+it with an inline `# zizmor: ignore[<audit>] -- <reason>` or an entry in
+`.github/zizmor.yml`, always with the reason.
+
+Third-party actions are pinned to a full commit SHA with a `# vX.Y.Z` comment
+(`uses: owner/action@<sha> # v1.2.3`); Dependabot keeps both up to date.
+`actions/*` stays on its major tag. zizmor fails CI on a third-party tag pin.
+
 ## Commits and releases
 
 Releases are automated with [release-please](https://github.com/googleapis/release-please).

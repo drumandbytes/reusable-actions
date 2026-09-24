@@ -7,6 +7,11 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    # Only offer releases at least a week old. A hijacked or broken release is
+    # usually caught and pulled within days; this keeps it from landing here
+    # (and, via auto-merge, in every caller) before that happens.
+    cooldown:
+      default-days: 7
     groups:
       actions:
         patterns: ["*"]
