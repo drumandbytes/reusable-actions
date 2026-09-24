@@ -11,12 +11,10 @@ secrets supplied by the caller. See README.md for usage examples.
 
 ## Reusable workflows
 
-**README.md's table is stale.** It documents 5 of the 10 `workflow_call`
-workflows below (missing `go-ci`, `node-ci`, `python-action-ci`, `indexnow`,
-`release-please`), and `security-scan.yml` has grown `scan-type`,
-`image-context`, `dockerfile`, `skip-files` beyond what's written there. When
-a caller's needs don't match the README, read the `on: workflow_call:` block
-in the `.yml` itself.
+README.md documents every `workflow_call` workflow below with inputs and a
+usage example. When changing a workflow's inputs, update its README section
+in the same PR; the `on: workflow_call:` block in the `.yml` is the source of
+truth if the two ever disagree.
 
 | Workflow | Required inputs | Required secrets |
 |---|---|---|
@@ -25,7 +23,7 @@ in the `.yml` itself.
 | `security-scan.yml` | none (`scan-type: fs\|image` switches the rest of the input set) | — |
 | `opentofu-validate.yml` | none | — |
 | `auto-merge.yml` | none | `DNB_ROBOT_CLIENT_ID` + `AUTOMATION_APP_PRIVATE_KEY`, only if `use-app-token-for-merge: true` |
-| `go-ci.yml` | `go-version` | — |
+| `go-ci.yml` | none (`go-version` falls back to `go.mod`) | — |
 | `node-ci.yml` | none | — |
 | `python-action-ci.yml` | `test-dependencies` | — |
 | `indexnow.yml` | `host`, `key` | — |
@@ -33,7 +31,15 @@ in the `.yml` itself.
 
 `ci.yml`, `dependabot-auto-merge.yml`, `self-release-please.yml` are this
 repo's own CI/release plumbing — no `workflow_call` trigger, not meant for
-callers.
+callers. `ci.yml` runs actionlint and zizmor; accepted zizmor findings live in
+`.github/zizmor.yml` (or inline `# zizmor: ignore[...]`) with a reason each.
+
+## Action pinning
+
+Third-party actions are SHA-pinned with a `# vX.Y.Z` comment; `actions/*`
+stays on major tags. Dependabot bumps both forms (7-day cooldown). zizmor's
+`unpinned-uses` policy enforces this, so a new third-party `uses:` on a tag
+fails CI.
 
 ## Versioning
 
