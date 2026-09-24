@@ -1,60 +1,44 @@
 name: Deploy Cloudflare Pages
 
-# Shared deploy for Cloudflare Pages sites. Defaults target the common case —
-# a Vite-style app that installs with npm and builds to dist/ — so a typical
-# caller only needs to pass project-name.
-#
-# Static sites that need no dependency install set install-dependencies: false
-# and point output-directory at the sources.
-
 on:
   workflow_call:
     inputs:
       project-name:
-        description: Cloudflare Pages project name to deploy to.
+        description: Cloudflare Pages project name.
         required: true
         type: string
       working-directory:
-        description: Directory containing the site, relative to the repo root.
+        description: Directory containing the site.
         required: false
         type: string
         default: "."
       install-dependencies:
-        description: >-
-          Run `npm ci` before building. Set false for static sites with no
-          package-lock.json — `npm ci` hard-fails without one.
+        description: Run `npm ci` first. Set false when there's no package-lock.json.
         required: false
         type: boolean
         default: true
       build-command:
-        description: >-
-          Shell command run before deploying, from working-directory. Set to an
-          empty string to deploy the sources as-is.
+        description: Build command, run in working-directory. Empty deploys the sources as-is.
         required: false
         type: string
         default: "npm run build"
       output-directory:
-        description: >-
-          Directory wrangler publishes, relative to working-directory. Use "."
-          to publish the working directory itself.
+        description: Directory to publish, relative to working-directory.
         required: false
         type: string
         default: "dist"
       node-version:
-        description: Node.js version used to install and build.
+        description: Node.js version, unless mise.toml pins one.
         required: false
         type: string
         default: "24"
       build-env:
-        description: >-
-          JSON object of environment variables exported before the build, for
-          build-time config such as Vite's VITE_* values. The caller
-          interpolates the values.
+        description: JSON object of environment variables for the build, e.g. VITE_* values.
         required: false
         type: string
         default: "{}"
       runner:
-        description: runs-on value for this workflow's job.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -72,11 +56,7 @@ jobs:
     name: Deploy ${{ inputs.project-name }}
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 60
-    # Two quick merges would otherwise deploy side by side, and whichever
-    # finishes last stays live -- possibly the older one. Queue per target and
-    # ref instead: cancel-in-progress stays false so a deploy is never cut off
-    # halfway, and GitHub keeps only the newest pending run. The ref keeps a
-    # preview deploy from displacing a queued production one.
+    # Queue rather than cancel, so an older deploy can't finish last and win.
     concurrency:
       group: cloudflare-pages-deploy-${{ inputs.project-name }}-${{ github.ref }}
       cancel-in-progress: false
@@ -94,15 +74,9 @@ jobs:
           default: ${{ inputs.node-version }}
           working-directory: ${{ inputs.working-directory }}
 
-      # Always set up Node: wrangler needs it even when nothing is installed,
-      # and a bare self-hosted runner has none (or some other version). Only
-      # the npm cache depends on installing -- it hard-fails without a lockfile.
+      # No Actions cache on self-hosted runners: they keep ~/.npm between runs,
+      # and restoring the cache there is slower than not.
       - uses: actions/setup-node@v7
-        # No dependency cache on self-hosted runners: the VM keeps its own
-        # package cache (~/.npm, the pnpm store) between runs, so restoring
-        # the Actions cache only re-downloads it -- measured at ~70s for a
-        # 286 MB npm cache on the Oracle runners -- and each save bloats it
-        # with whatever the VM has accumulated.
         with:
           node-version: ${{ steps.node.outputs.version }}
           cache: ${{ inputs.install-dependencies && runner.environment != 'self-hosted' && 'npm' || '' }}
@@ -112,22 +86,13 @@ jobs:
       - if: inputs.install-dependencies
         run: npm ci
 
+      # @sh quotes each build-env value for eval. jq's output is assigned first
+      # so a jq failure stops the job instead of building without the vars.
       - name: Build
         if: inputs.build-command != ''
         env:
           BUILD_ENV_JSON: ${{ inputs.build-env }}
           BUILD_COMMAND: ${{ inputs.build-command }}
-        # build-env is passed through the environment and quoted with jq's @sh
-        # before eval, so a value containing shell metacharacters cannot break
-        # out of its assignment. The jq output is captured first rather than
-        # fed straight to eval: `eval "$(jq …)"` ignores a jq failure (missing
-        # binary, malformed JSON) and would build without the variables,
-        # deploying a broken site from a green job. As a plain assignment the
-        # failure stops the job instead.
-        #
-        # build-command is meant to run as shell, so it is eval'd as-is --
-        # through the environment only so an expression expansion can't
-        # splice into the lines around it.
         run: |
           assignments=$(printf '%s' "$BUILD_ENV_JSON" | jq -r 'to_entries[] | "\(.key)=\(.value|@sh)"')
           set -a

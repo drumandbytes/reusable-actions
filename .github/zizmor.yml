@@ -1,37 +1,24 @@
-# zizmor configuration for this repo's CI (ci.yml's zizmor job). Anything
-# accepted here is accepted on purpose -- each entry says why.
-
 rules:
   unpinned-uses:
     config:
       policies:
-        # GitHub's own actions stay on major tags so Dependabot keeps moving
-        # them with no weekly PR per patch; everything third-party is
-        # SHA-pinned, since a hijacked tag there would run in every org repo.
+        # GitHub's and our own actions on tags; third-party SHA-pinned.
         "actions/*": ref-pin
-        # This repo dogfoods its own reusable workflows through the released
-        # @v1 tag on purpose, the same way every caller does.
         "drumandbytes/*": ref-pin
         "*": hash-pin
 
   dangerous-triggers:
     ignore:
-      # workflow_run is required so Dependabot PRs get a token that can
-      # merge (see auto-merge.yml). It never checks out or runs PR code.
+      # Needed for Dependabot merges; never checks out PR code.
       - dependabot-auto-merge.yml
 
   cache-poisoning:
     ignore:
-      # The only cache is setup-node's npm download cache, and `npm ci`
-      # checks every tarball against the lockfile's integrity hashes, so a
-      # poisoned entry fails the install instead of shipping.
+      # Only the npm download cache, and `npm ci` verifies lockfile hashes.
       - deploy-cloudflare-pages.yml
       - deploy-cloudflare-worker.yml
 
   self-repository:
     ignore:
-      # ci.yml's self-tests call the local reusable workflows with `./`, not
-      # `$/`: they only ever run in this repo, where both resolve to the same
-      # commit, and actionlint can only check a call's inputs against the
-      # called workflow through `./` (it doesn't understand `$/` yet).
+      # Self-tests use `./` (same commit here) so actionlint checks inputs.
       - ci.yml

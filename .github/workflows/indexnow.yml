@@ -1,10 +1,7 @@
 name: Submit to IndexNow
 
-# Pings IndexNow (Bing, Yandex, Seznam, …) with the sitemap after a deploy.
-# Key's not secret -- ownership proof is serving <key>.txt -- but callers
-# pass it via INDEXNOW_KEY so rotation doesn't mean editing this file.
-#
-# continue-on-error lives here so no caller's deploy can fail because of us.
+# Submits the sitemap's URLs to IndexNow (Bing, Yandex, Seznam, ...) after a
+# deploy. continue-on-error so it can never fail a caller's deploy.
 
 on:
   workflow_call:
@@ -14,11 +11,11 @@ on:
         required: true
         type: string
       key:
-        description: IndexNow key -- pass the org's INDEXNOW_KEY variable.
+        description: IndexNow key; pass the org's INDEXNOW_KEY variable.
         required: true
         type: string
       runner:
-        description: runs-on value for this workflow's job.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -40,14 +37,10 @@ jobs:
         run: |
           set -euo pipefail
 
-          # `|| true`: grep exits 1 on no match, which pipefail would turn
-          # into an abort instead of an empty list.
+          # grep exits 1 on no match, which pipefail would turn into an abort.
           extract_locs() { { grep -o '<loc>[^<]*</loc>' || true; } | sed -E 's#</?loc>##g'; }
 
-          # --retry-all-errors: this job starts the instant the deploy job
-          # reports done, which can be seconds ahead of the new deployment
-          # actually being live at the edge -- a bare curl -sf here 404s/523s
-          # more often than not.
+          # Retries: this runs right after the deploy, often before it's live.
           body=$(curl -sf --retry 5 --retry-delay 6 --retry-all-errors "https://${HOST}/sitemap.xml")
           locs=$(printf '%s' "$body" | extract_locs)
 
@@ -68,8 +61,7 @@ jobs:
             exit 0
           fi
 
-          # IndexNow takes at most 10,000 URLs per request, so submit in
-          # batches. --retry covers 429 and 5xx from the endpoint.
+          # IndexNow takes at most 10,000 URLs per request.
           failed=0
           while IFS= read -r batch; do
             n=$(jq 'length' <<< "$batch")

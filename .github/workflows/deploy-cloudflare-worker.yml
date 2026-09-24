@@ -1,37 +1,24 @@
 name: Deploy Cloudflare Worker
 
-# Shared deploy for npm-based Cloudflare Workers living in a subdirectory of a
-# repo. Replaces six near-identical per-worker workflows across
-# cloudflare-workers and road-conditions-ee, which had drifted onto three
-# different action version sets.
-#
-# Everything repo-specific (which directory, which worker) arrives as an input
-# or secret from the caller, so this file stays generic.
-
 on:
   workflow_call:
     inputs:
       working-directory:
-        description: >-
-          Directory containing the worker's wrangler config, package.json and
-          package-lock.json, relative to the repo root (e.g. "api-worker").
+        description: Directory containing the worker's wrangler config, e.g. "api-worker".
         required: true
         type: string
       node-version:
-        description: Node.js version used to install dependencies and run wrangler.
+        description: Node.js version, unless mise.toml pins one.
         required: false
         type: string
         default: "24"
       install-dependencies:
-        description: >-
-          Run `npm ci` before deploying. Set false for workers that have no
-          package-lock.json and let wrangler bundle straight from source —
-          `npm ci` hard-fails without a lockfile.
+        description: Run `npm ci` first. Set false when there's no package-lock.json.
         required: false
         type: boolean
         default: true
       runner:
-        description: runs-on value for this workflow's job.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -41,9 +28,6 @@ on:
       CLOUDFLARE_ACCOUNT_ID:
         required: true
 
-# Deploying needs no write access to the repo itself — auth to Cloudflare is via
-# the API token. Reusable workflows can only reduce the caller's permissions,
-# never elevate them, so this is a floor rather than a grant.
 permissions:
   contents: read
 
@@ -52,11 +36,7 @@ jobs:
     name: Deploy ${{ inputs.working-directory }}
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 60
-    # Two quick merges would otherwise deploy side by side, and whichever
-    # finishes last stays live -- possibly the older one. Queue per target and
-    # ref instead: cancel-in-progress stays false so a deploy is never cut off
-    # halfway, and GitHub keeps only the newest pending run. The ref keeps a
-    # preview deploy from displacing a queued production one.
+    # Queue rather than cancel, so an older deploy can't finish last and win.
     concurrency:
       group: cloudflare-worker-deploy-${{ inputs.working-directory }}-${{ github.ref }}
       cancel-in-progress: false
@@ -74,15 +54,9 @@ jobs:
           default: ${{ inputs.node-version }}
           working-directory: ${{ inputs.working-directory }}
 
-      # Always set up Node: wrangler needs it even when nothing is installed,
-      # and a bare self-hosted runner has none (or some other version). Only
-      # the npm cache depends on installing -- it hard-fails without a lockfile.
+      # No Actions cache on self-hosted runners: they keep ~/.npm between runs,
+      # and restoring the cache there is slower than not.
       - uses: actions/setup-node@v7
-        # No dependency cache on self-hosted runners: the VM keeps its own
-        # package cache (~/.npm, the pnpm store) between runs, so restoring
-        # the Actions cache only re-downloads it -- measured at ~70s for a
-        # 286 MB npm cache on the Oracle runners -- and each save bloats it
-        # with whatever the VM has accumulated.
         with:
           node-version: ${{ steps.node.outputs.version }}
           cache: ${{ inputs.install-dependencies && runner.environment != 'self-hosted' && 'npm' || '' }}

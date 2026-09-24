@@ -1,79 +1,59 @@
 name: Security scan
 
-# Trivy-based scanning, either of the source tree (dependency vulnerabilities,
-# committed secrets, IaC misconfigurations) or of a built container image
-# (OS packages plus the same dependency scanning, layered on top of whatever
-# base image was chosen).
-#
-# Findings fail the job and are printed as a table in the log. Results are
-# deliberately NOT uploaded as SARIF to GitHub code scanning: that requires
-# GitHub Code Security / Advanced Security on private repositories, which this
-# org does not pay for. Failing the build gives the same protection with no
-# billable surface, and behaves identically on public and private repos.
+# Trivy scan of the source tree (fs) or of a locally built image (image).
+# Findings fail the job. No SARIF upload: code scanning on private repos
+# needs GitHub Advanced Security, which the org doesn't pay for.
 
 on:
   workflow_call:
     inputs:
       scan-type:
-        description: >-
-          "fs" scans the checked-out source tree. "image" builds an image
-          locally (not pushed) and scans that instead - use this for a
-          Dockerfile, where the real risk surface is the base image and
-          installed OS packages, not the source tree.
+        description: '"fs" scans the source tree; "image" builds the Dockerfile and scans the image.'
         required: false
         type: string
         default: "fs"
       scan-ref:
-        description: 'fs only: path to scan, relative to the repository root.'
+        description: 'fs only: path to scan.'
         required: false
         type: string
         default: "."
       image-context:
-        description: 'image only: build context passed to docker/build-push-action.'
+        description: 'image only: build context.'
         required: false
         type: string
         default: "."
       dockerfile:
-        description: 'image only: path to the Dockerfile to build and scan.'
+        description: 'image only: Dockerfile path.'
         required: false
         type: string
         default: "Dockerfile"
       skip-files:
-        description: >-
-          image only: comma-separated in-image paths to exclude, e.g. for
-          vendored/closed-source binaries whose embedded dependencies you have
-          no way to act on regardless of what Trivy finds in them.
+        description: 'image only: comma-separated in-image paths to skip, e.g. vendored binaries.'
         required: false
         type: string
         default: ""
       scanners:
-        description: >-
-          Comma-separated Trivy scanners. "vuln" finds vulnerable dependencies,
-          "secret" finds committed credentials, "misconfig" finds IaC
-          misconfigurations (Terraform/OpenTofu, Dockerfiles, k8s manifests) -
-          fs scans only, not meaningful against a built image.
+        description: 'fs only: comma-separated Trivy scanners.'
         required: false
         type: string
         default: "vuln,secret,misconfig"
       severity:
-        description: Severities that fail the build. Lower ones are not reported.
+        description: Severities that fail the build.
         required: false
         type: string
         default: "CRITICAL,HIGH"
       ignore-unfixed:
-        description: >-
-          Skip vulnerabilities that have no fix available yet. Keeps the signal
-          actionable rather than reporting things you cannot do anything about.
+        description: Skip vulnerabilities with no fix available.
         required: false
         type: boolean
         default: true
       skip-dirs:
-        description: 'fs only: comma-separated directories to exclude from the scan.'
+        description: 'fs only: comma-separated directories to skip.'
         required: false
         type: string
         default: ""
       runner:
-        description: runs-on value for this workflow's job.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -87,9 +67,7 @@ jobs:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 60
     steps:
-      # Every scan step below matches on exactly "fs" or "image", so any other
-      # value (a typo, different casing) would skip them all and pass green
-      # with nothing scanned.
+      # Any other value would skip the scan and pass green.
       - name: Validate scan-type
         env:
           SCAN_TYPE: ${{ inputs.scan-type }}
@@ -115,38 +93,20 @@ jobs:
           load: true
           tags: trivy-scan:latest
           cache-from: type=gha,scope=${{ github.workflow }}-${{ github.job }}-${{ runner.arch }}
-          # Written from the default branch only. PR runs can still read it
-          # (branch caches fall back to the default branch's), but a mode=max
-          # export of every layer on every PR run eats the repo's 10 GB cache
-          # quota and evicts the entries that are actually reused.
+          # Written from the default branch only, so PR runs don't fill the
+          # 10 GB cache quota. PRs still read it.
           cache-to: ${{ github.ref_name == github.event.repository.default_branch && format('type=gha,mode=max,scope={0}-{1}-{2}', github.workflow, github.job, runner.arch) || '' }}
 
-      # Trivy's vulnerability DB is ~117 MB. On self-hosted runners it lives
-      # in the runner's tool cache, which persists between jobs, and Trivy
-      # only re-downloads it when stale (~6h). The default spot inside the
-      # workspace is wiped by every checkout, and the action's Actions-cache
-      # restore is slow from the Oracle VMs, so each scan there spent ~50s
-      # re-downloading the DB. GitHub-hosted runners keep the default.
-      - if: inputs.scan-type == 'fs'
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      # On self-hosted runners the vulnerability DB lives in the tool cache,
+      # which survives between jobs; the Actions cache is slower to restore.
+      - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
-          scan-type: fs
+          scan-type: ${{ inputs.scan-type }}
           scan-ref: ${{ inputs.scan-ref }}
-          scanners: ${{ inputs.scanners }}
-          severity: ${{ inputs.severity }}
-          ignore-unfixed: ${{ inputs.ignore-unfixed }}
-          skip-dirs: ${{ inputs.skip-dirs }}
-          format: table
-          exit-code: "1"
-          cache: ${{ runner.environment != 'self-hosted' }}
-          cache-dir: ${{ runner.environment == 'self-hosted' && format('{0}/trivy', runner.tool_cache) || format('{0}/.cache/trivy', github.workspace) }}
-
-      - if: inputs.scan-type == 'image'
-        uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
-        with:
-          scan-type: image
-          image-ref: trivy-scan:latest
-          skip-files: ${{ inputs.skip-files }}
+          image-ref: ${{ inputs.scan-type == 'image' && 'trivy-scan:latest' || '' }}
+          scanners: ${{ inputs.scan-type == 'fs' && inputs.scanners || '' }}
+          skip-dirs: ${{ inputs.scan-type == 'fs' && inputs.skip-dirs || '' }}
+          skip-files: ${{ inputs.scan-type == 'image' && inputs.skip-files || '' }}
           severity: ${{ inputs.severity }}
           ignore-unfixed: ${{ inputs.ignore-unfixed }}
           format: table
@@ -156,10 +116,8 @@ jobs:
 
       - name: Clean self-hosted runner Docker storage
         if: ${{ always() && runner.environment == 'self-hosted' }}
-        shell: bash
         run: |
           docker system prune --all --force --volumes
           docker volume prune --all --force
           docker buildx prune --all --force
-          echo "Storage after cleanup:"
           docker system df

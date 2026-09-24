@@ -1,32 +1,28 @@
 name: OpenTofu validate
 
-# Format and validity checks for an OpenTofu root module. Needs no credentials:
-# `init -backend=false` skips backend configuration entirely, so this runs
-# safely on pull requests without touching remote state.
+# fmt and validate for an OpenTofu root module. `init -backend=false` needs no
+# credentials and never touches remote state.
 
 on:
   workflow_call:
     inputs:
       working-directory:
-        description: Root module directory, relative to the repository root.
+        description: Root module directory.
         required: false
         type: string
         default: "."
       tofu-version:
-        description: OpenTofu CLI version to install.
+        description: OpenTofu version.
         required: false
         type: string
         default: "1.12.3"
       check-format:
-        description: >-
-          Run `tofu fmt -check -recursive`. Disable for a nested module when a
-          parent job already format-checks the whole repository, to avoid
-          reporting the same failure twice.
+        description: Run `tofu fmt -check -recursive`. Disable when a parent job already does.
         required: false
         type: boolean
         default: true
       runner:
-        description: runs-on value for every job in this workflow.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -61,17 +57,15 @@ jobs:
       - uses: opentofu/setup-opentofu@a1320f892987e89d278cc92dc5adc984fb93aca4 # v2.0.2
         with:
           tofu_version: ${{ inputs.tofu-version }}
-      # Providers are the bulk of init's time and never change between runs
-      # with the same lock file, so keep them in a plugin cache keyed on it.
+      # Provider cache, keyed on the lock file.
       - uses: actions/cache@v6
         with:
           path: ${{ runner.temp }}/tofu-plugin-cache
           key: tofu-providers-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles(format('{0}/.terraform.lock.hcl', inputs.working-directory)) }}
           restore-keys: tofu-providers-${{ runner.os }}-${{ runner.arch }}-
-      - name: Init (no backend, so no credentials required)
+      - name: Init
         env:
           TF_PLUGIN_CACHE_DIR: ${{ runner.temp }}/tofu-plugin-cache
-        # tofu refuses a cache directory that does not exist yet.
         run: |
           mkdir -p "$TF_PLUGIN_CACHE_DIR"
           tofu init -backend=false

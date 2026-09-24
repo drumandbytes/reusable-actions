@@ -1,22 +1,18 @@
 name: Release Please
 
-# Cuts semver releases from Conventional Commits: opens/updates a release PR
-# with the version bump and CHANGELOG.md, then tags + publishes a GitHub
-# Release once that PR is merged. Expects release-please-config.json and
-# .release-please-manifest.json in the calling repo's root.
+# Expects release-please-config.json and .release-please-manifest.json at the
+# caller's repo root.
 
 on:
   workflow_call:
     inputs:
       move-floating-tags:
-        description: >-
-          Move vN/vN.M convenience tags onto every new release. Only needed by
-          repos consumed as a reusable GitHub Action pinned like `@v1`.
+        description: Move the vN and vN.M tags to each new release, for repos consumed as `@v1`.
         required: false
         type: boolean
         default: false
       runner:
-        description: runs-on value for this workflow's job.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -35,17 +31,13 @@ jobs:
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 60
     steps:
-      # dnb-robot App token, not GITHUB_TOKEN: the release PR merge and the tag
-      # pushes have to get past protecting-main's ruleset, which only bypasses
-      # for this installed App (see drumandbytes/dnb-tf rulesets.tf).
+      # dnb-robot, not GITHUB_TOKEN: only the app bypasses the main ruleset
+      # (dnb-tf rulesets.tf). issues: for release-please's labels.
       - uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
         id: app-token
         with:
           client-id: ${{ secrets.DNB_ROBOT_CLIENT_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
-          # Just what release-please needs, not the app's whole installation
-          # grant: contents for release commits, tags and releases,
-          # pull-requests for the release PR, issues for its autorelease labels.
           permission-contents: write
           permission-pull-requests: write
           permission-issues: write
@@ -57,10 +49,7 @@ jobs:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
 
-      # Consumers pin this repo's own release (or a caller's own tag) and
-      # expect vN/vN.M to follow patches/minors. This job has no checkout, so
-      # retarget the refs through the API. v5 root-component outputs are
-      # bare, not '.--'-prefixed.
+      # No checkout here, so move the tags through the API.
       - if: ${{ inputs.move-floating-tags && steps.release.outputs.release_created }}
         env:
           GH_TOKEN: ${{ steps.app-token.outputs.token }}

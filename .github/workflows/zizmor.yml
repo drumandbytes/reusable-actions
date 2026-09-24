@@ -1,34 +1,23 @@
 name: zizmor
 
-# Security audit of a repository's GitHub Actions workflows (template
-# injection, token and permission handling, unpinned third-party actions,
-# cache poisoning...). Findings fail the job and are printed in the log --
-# no SARIF upload, for the same reason as security-scan.yml.
-#
-# Accepted findings belong in the caller's .github/zizmor.yml (picked up
-# automatically) or inline as `# zizmor: ignore[<audit>] -- <reason>`,
-# always with the reason.
+# Audits the caller's workflows; findings fail the job. Accept findings in
+# .github/zizmor.yml or inline `# zizmor: ignore[...]`, with a reason.
 
 on:
   workflow_call:
     inputs:
       min-severity:
-        description: >-
-          Lowest severity that fails the job: informational, low, medium or
-          high. Informational findings are style-level, so they are skipped
-          by default.
+        description: Lowest failing severity - informational, low, medium or high.
         required: false
         type: string
         default: "low"
       version:
-        description: >-
-          zizmor version. Pinned so a new release's audits can't turn every
-          caller red at once; bump deliberately.
+        description: zizmor version. Pinned so a new release can't turn every caller red at once.
         required: false
         type: string
         default: "1.30.1"
       runner:
-        description: runs-on value for this workflow's job. Needs Docker.
+        description: runs-on value. Needs Docker.
         required: false
         type: string
         default: "ubuntu-latest"
