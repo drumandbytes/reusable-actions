@@ -30,6 +30,7 @@ jobs:
   submit:
     name: IndexNow ${{ inputs.host }}
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     continue-on-error: true
     steps:
       - name: Submit sitemap URLs

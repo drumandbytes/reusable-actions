@@ -39,6 +39,7 @@ jobs:
     name: Format check
     if: inputs.check-format
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: opentofu/setup-opentofu@v2
@@ -50,6 +51,7 @@ jobs:
   validate:
     name: Validate
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
       - uses: opentofu/setup-opentofu@v2

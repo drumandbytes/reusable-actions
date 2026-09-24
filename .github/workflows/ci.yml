@@ -25,6 +25,7 @@ concurrency:
 jobs:
   actionlint:
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
 
@@ -39,6 +40,7 @@ jobs:
   required-checks-passed:
     name: Required checks passed
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     needs: [actionlint]
     if: always()
     steps:

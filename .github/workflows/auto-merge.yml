@@ -68,6 +68,7 @@ jobs:
   auto-merge:
     name: Auto merge
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     permissions:
       contents: write
       pull-requests: write

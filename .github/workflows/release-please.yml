@@ -33,6 +33,7 @@ permissions:
 jobs:
   release-please:
     runs-on: ${{ inputs.runner }}
+    timeout-minutes: 60
     steps:
       # dnb-robot App token, not GITHUB_TOKEN: the release PR merge and the tag
       # pushes have to get past protecting-main's ruleset, which only bypasses
