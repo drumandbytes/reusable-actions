@@ -81,8 +81,12 @@ jobs:
         with:
           persist-credentials: false
 
+      # Self-hosted: dockerd's own builder keeps its layer cache on the VM,
+      # faster than an Actions-cache round trip.
       - if: inputs.scan-type == 'image'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: ${{ runner.environment == 'self-hosted' && 'docker' || 'docker-container' }}
 
       - name: Build image to scan
         if: inputs.scan-type == 'image'
@@ -92,10 +96,10 @@ jobs:
           file: ${{ inputs.dockerfile }}
           load: true
           tags: trivy-scan:latest
-          cache-from: type=gha,scope=${{ github.workflow }}-${{ github.job }}-${{ runner.arch }}
+          cache-from: ${{ runner.environment != 'self-hosted' && format('type=gha,scope={0}-{1}-{2}', github.workflow, github.job, runner.arch) || '' }}
           # Written from the default branch only, so PR runs don't fill the
           # 10 GB cache quota. PRs still read it.
-          cache-to: ${{ github.ref_name == github.event.repository.default_branch && format('type=gha,mode=max,scope={0}-{1}-{2}', github.workflow, github.job, runner.arch) || '' }}
+          cache-to: ${{ runner.environment != 'self-hosted' && github.ref_name == github.event.repository.default_branch && format('type=gha,mode=max,scope={0}-{1}-{2}', github.workflow, github.job, runner.arch) || '' }}
 
       # On self-hosted runners the vulnerability DB lives in the tool cache,
       # which survives between jobs; the Actions cache is slower to restore.
@@ -117,7 +121,9 @@ jobs:
       - name: Clean self-hosted runner Docker storage
         if: ${{ always() && runner.environment == 'self-hosted' }}
         run: |
-          docker system prune --all --force --volumes
+          docker container prune --force
+          docker image prune --all --force
           docker volume prune --all --force
-          docker buildx prune --all --force
+          # Keep the build cache for the next job; cap it instead of wiping it.
+          docker buildx prune --builder default --force --max-used-space 20GB
           docker system df

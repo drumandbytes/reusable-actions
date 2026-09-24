@@ -51,7 +51,9 @@ Common to all of them:
 - **Self-hosted runners** — need Actions runner **2.336.0 or newer** (for
   `$/`), plus `node`, `jq` and `unzip` on the host. GitHub-hosted runners have
   all of these. Node workflows skip the Actions dependency cache there: the
-  VM's own `~/.npm` / pnpm store already persists between runs.
+  VM's own `~/.npm` / pnpm store already persists between runs. Likewise
+  `security-scan` builds with dockerd's own builder, whose layer cache stays
+  on the VM (capped at 20 GB by the cleanup step).
 
 ### `deploy-cloudflare-worker.yml`
 
@@ -264,7 +266,8 @@ Trivy scan, in one of two modes:
   committed secrets and IaC misconfigurations.
 - **`image`** builds the Dockerfile locally (not pushed) and scans the image —
   the real risk surface for a container is its base image and OS packages.
-  Build layers are cached; only default-branch runs write the cache.
+  Build layers are cached; on GitHub-hosted runners only default-branch runs
+  write the cache.
 
 Findings fail the job and print as a table in the log. Results are
 deliberately **not** uploaded as SARIF to GitHub code scanning: that requires
