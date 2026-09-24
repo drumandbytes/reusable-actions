@@ -42,6 +42,11 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+      sitemap-artifact:
+        description: Upload the built sitemap*.xml files as an artifact with this name, for indexnow.yml.
+        required: false
+        type: string
+        default: ""
     secrets:
       CLOUDFLARE_API_TOKEN:
         required: true
@@ -99,6 +104,14 @@ jobs:
           eval "$assignments"
           set +a
           eval "$BUILD_COMMAND"
+
+      - if: inputs.sitemap-artifact != ''
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ inputs.sitemap-artifact }}
+          path: ${{ inputs.working-directory }}/${{ inputs.output-directory }}/**/sitemap*.xml
+          if-no-files-found: error
+          retention-days: 1
 
       - uses: cloudflare/wrangler-action@25853364521e0d392ece9b0c1e97a4b37b638087 # v4.1.2
         with:

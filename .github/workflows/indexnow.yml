@@ -19,6 +19,13 @@ on:
         required: false
         type: string
         default: "ubuntu-latest"
+      sitemap-artifact:
+        description: >-
+          Read the sitemap from this artifact of the same run instead of
+          fetching it from the site. Upload the build's sitemap*.xml files.
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: read
@@ -30,25 +37,44 @@ jobs:
     timeout-minutes: 60
     continue-on-error: true
     steps:
+      # Cloudflare can refuse GitHub-hosted runner IPs, so the live sitemap
+      # isn't always reachable from here.
+      - if: inputs.sitemap-artifact != ''
+        uses: actions/download-artifact@v8
+        with:
+          name: ${{ inputs.sitemap-artifact }}
+          path: ${{ runner.temp }}/sitemap
+
       - name: Submit sitemap URLs
         env:
           HOST: ${{ inputs.host }}
           KEY: ${{ inputs.key }}
+          SITEMAP_DIR: ${{ inputs.sitemap-artifact != '' && format('{0}/sitemap', runner.temp) || '' }}
         run: |
           set -euo pipefail
 
           # grep exits 1 on no match, which pipefail would turn into an abort.
           extract_locs() { { grep -o '<loc>[^<]*</loc>' || true; } | sed -E 's#</?loc>##g'; }
 
+          # Reads this host's sitemaps from the artifact when there is one.
           # Retries: this runs right after the deploy, often before it's live.
-          body=$(curl -sf --retry 5 --retry-delay 6 --retry-all-errors "https://${HOST}/sitemap.xml")
+          fetch() {
+            local path="${1#"https://${HOST}/"}"
+            if [ -n "$SITEMAP_DIR" ] && [ "$path" != "$1" ]; then
+              cat "$SITEMAP_DIR/$path"
+            else
+              curl -fsS --retry 5 --retry-delay 6 --retry-all-errors "$1"
+            fi
+          }
+
+          body=$(fetch "https://${HOST}/sitemap.xml")
           locs=$(printf '%s' "$body" | extract_locs)
 
           if printf '%s' "$body" | grep -q '<sitemapindex'; then
             urls=""
             while IFS= read -r sm; do
               [ -z "$sm" ] && continue
-              urls="$urls"$'\n'"$(curl -sf --retry 5 --retry-delay 6 --retry-all-errors "$sm" | extract_locs)"
+              urls="$urls"$'\n'"$(fetch "$sm" | extract_locs)"
             done <<< "$locs"
           else
             urls="$locs"
