@@ -88,12 +88,17 @@ jobs:
               state: 'open',
               head: `${run.head_repository.owner.login}:${run.head_branch}`,
             });
-            if (prs.data.length === 0) {
-              core.info('No open PR for this branch; nothing to merge.');
+            // Match on the exact commit CI ran against, not just the branch:
+            // a branch can back PRs into more than one base, and if the head
+            // moved on since this run, the CI run for the new head decides.
+            const pr = prs.data.find((p) => p.head.sha === run.head_sha);
+            if (!pr) {
+              core.info(prs.data.length === 0
+                ? 'No open PR for this branch; nothing to merge.'
+                : `No open PR at ${run.head_sha} (head has moved on); the CI run for the new head decides.`);
               core.setOutput('eligible', 'false');
               return;
             }
-            const pr = prs.data[0];
 
             const setEligible = (ok, reason) => {
               core.info(`PR #${pr.number} by ${pr.user.login}: ${reason}`);
@@ -115,19 +120,30 @@ jobs:
             // with the PR title as it force-pushes over the life of the PR,
             // so diffing it base vs. head is a stable way to size the bump
             // without parsing the title.
+            // A missing manifest (e.g. the very first release PR) or root
+            // entry means the bump can't be sized: leave it for a human
+            // rather than failing the run.
             const versionAt = async (ref) => {
-              const { data } = await github.rest.repos.getContent({
-                owner: context.repo.owner,
-                repo: context.repo.repo,
-                path: '.release-please-manifest.json',
-                ref,
-              });
-              return JSON.parse(Buffer.from(data.content, 'base64').toString())['.'];
+              try {
+                const { data } = await github.rest.repos.getContent({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  path: '.release-please-manifest.json',
+                  ref,
+                });
+                return JSON.parse(Buffer.from(data.content, 'base64').toString())['.'];
+              } catch (e) {
+                if (e.status === 404) return undefined;
+                throw e;
+              }
             };
             const [oldVersion, newVersion] = await Promise.all([
               versionAt(pr.base.sha),
               versionAt(pr.head.sha),
             ]);
+            if (!oldVersion || !newVersion) {
+              return setEligible(false, 'no root (".") version in .release-please-manifest.json on base or head; needs manual review');
+            }
             const [oldMajor, oldMinor] = oldVersion.split('.').map(Number);
             const [newMajor, newMinor] = newVersion.split('.').map(Number);
             const isPatch = oldMajor === newMajor && oldMinor === newMinor;
@@ -140,6 +156,12 @@ jobs:
         with:
           client-id: ${{ secrets.DNB_ROBOT_CLIENT_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+          # Just what a merge needs, not the app's whole installation grant.
+          # workflows: Dependabot's github-actions PRs edit workflow files,
+          # and GitHub refuses to let an app merge those without it.
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
 
       - name: Enable auto-merge
         if: steps.pr.outputs.eligible == 'true'

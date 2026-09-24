@@ -86,8 +86,17 @@ jobs:
       # Python which ships PyYAML — so install it explicitly rather than
       # depending on whatever the image happens to preinstall.
       - run: pip install pyyaml
+      # GitHub accepts either spelling for the action metadata file.
       - name: Validate action.yml is parseable YAML
-        run: python -c "import yaml,sys; yaml.safe_load(open('action.yml')); print('action.yml is valid YAML')"
+        shell: python
+        run: |
+          import os, sys, yaml
+          found = [f for f in ("action.yml", "action.yaml") if os.path.exists(f)]
+          if not found:
+              print("::error::no action.yml or action.yaml at the repository root")
+              sys.exit(1)
+          yaml.safe_load(open(found[0]))
+          print(f"{found[0]} is valid YAML")
       - name: Check required files exist
         env:
           REQUIRED_FILES: ${{ inputs.required-files }}

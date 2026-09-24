@@ -123,8 +123,10 @@ jobs:
   check:
     name: ${{ matrix.package.name || matrix.package.directory }}
     # An empty packages array yields an empty matrix, which GitHub treats as an
-    # error rather than a skip — so guard on it explicitly.
-    if: inputs.packages != '[]'
+    # error rather than a skip — so guard on it explicitly. Checks the parsed
+    # array, not the raw string, so "[ ]" or a `|` block's trailing newline
+    # still counts as empty.
+    if: fromJSON(inputs.packages)[0] != null
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 60
     strategy:

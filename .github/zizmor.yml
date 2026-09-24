@@ -30,10 +30,9 @@ rules:
 
   github-app:
     ignore:
-      # TODO: scope these tokens down with permission-* inputs. Not done
-      # blind: merging a Dependabot PR that edits workflow files may need
-      # `workflows: write`, and asking for a permission the dnb-robot app
-      # isn't granted fails token creation outright. Needs the app's actual
-      # grants checked first.
-      - auto-merge.yml
+      # TODO: scope down with permission-* inputs, as auto-merge.yml does.
+      # Held back because release-please's README asks for issues: write
+      # (for its autorelease labels) and it's unconfirmed the dnb-robot app
+      # holds that -- requesting a permission the app lacks fails token
+      # creation, which would stop releases in every repo at once.
       - release-please.yml
