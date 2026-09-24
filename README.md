@@ -49,7 +49,8 @@ Common to all of them:
   commit as the workflow itself.
 - **Self-hosted runners** — need Actions runner **2.336.0 or newer** (for
   `$/`), plus `node`, `jq` and `unzip` on the host. GitHub-hosted runners have
-  all of these.
+  all of these. Node workflows skip the Actions dependency cache there: the
+  VM's own `~/.npm` / pnpm store already persists between runs.
 
 ### `deploy-cloudflare-worker.yml`
 
@@ -188,7 +189,7 @@ their own.
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `go-version` | no | `""` | Go version; empty reads it from `go.mod` |
+| `go-version` | no | `""` | Go version; empty reads it from `go.mod`. A patch-level directive there (`go 1.27.0`) installs exactly that patch, so pass e.g. `1.27` to get the latest 1.27.x |
 | `test-race` | no | `false` | Run tests with `-race` |
 | `run-golangci-lint` | no | `true` | |
 | `golangci-lint-version` | no | `latest` | |

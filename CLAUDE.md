@@ -52,6 +52,12 @@ stays on major tags. Dependabot bumps both forms (7-day cooldown). zizmor's
 `unpinned-uses` policy enforces this, so a new third-party `uses:` on a tag
 fails CI.
 
+## Commits and PRs
+
+Author commits as the repo owner, not Claude. No `Co-Authored-By: Claude`
+trailer, no `Claude-Session:` line, and no "Generated with Claude Code"
+footer in commit messages or PR descriptions.
+
 ## Versioning
 
 Callers pin to the floating major tag: `...@v1`. The tag moves forward with
