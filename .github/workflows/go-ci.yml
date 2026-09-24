@@ -10,9 +10,12 @@ on:
   workflow_call:
     inputs:
       go-version:
-        description: Go version used for every job.
-        required: true
+        description: >-
+          Go version used for every job. Empty (default) reads it from go.mod's
+          go/toolchain directive, so the version lives in one place.
+        required: false
         type: string
+        default: ""
       test-race:
         description: Run `go test` with the race detector.
         required: false
@@ -51,10 +54,13 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@v7
         with:
           go-version: ${{ inputs.go-version }}
+          go-version-file: ${{ inputs.go-version == '' && 'go.mod' || '' }}
 
       - name: Build
         run: go build ./...
@@ -82,12 +88,15 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
       - uses: actions/setup-go@v7
         with:
           go-version: ${{ inputs.go-version }}
+          go-version-file: ${{ inputs.go-version == '' && 'go.mod' || '' }}
 
-      - uses: golangci/golangci-lint-action@v9
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: ${{ inputs.golangci-lint-version }}
 
@@ -98,7 +107,9 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
-      - uses: hadolint/hadolint-action@v3.5.0
+      - uses: hadolint/hadolint-action@06be81baf89a55ffd0e24b8f04a4185738dd3387 # v3.5.0
         with:
           dockerfile: ${{ inputs.dockerfile-path }}

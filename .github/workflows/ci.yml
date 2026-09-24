@@ -22,18 +22,47 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   actionlint:
     runs-on: ubuntu-latest
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
 
+      # Pinned rather than fetched from actionlint's main branch, which would
+      # run whatever script is there today. Dependabot can't see this one --
+      # bump the version by hand.
       - name: Install actionlint
+        env:
+          ACTIONLINT_VERSION: 1.7.12
         run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/main/scripts/download-actionlint.bash)
+          bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "$ACTIONLINT_VERSION"
 
       - run: ./actionlint -color
+
+  # Security audit of the workflow definitions themselves (injection, token
+  # handling, unpinned third-party actions). Every org repo runs this code,
+  # so it is checked here rather than in each caller. Accepted findings are
+  # documented in .github/zizmor.yml. No SARIF upload, same reasoning as
+  # security-scan.yml: fail the job and print the findings.
+  zizmor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
+        with:
+          advanced-security: false
+          # Pinned so a new zizmor audit can't turn an unrelated PR red.
+          version: 1.30.1
 
   # Single stable name for the org's required-status-check ruleset to point
   # at, regardless of how the real jobs above are split or renamed.
@@ -41,7 +70,7 @@ jobs:
     name: Required checks passed
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: [actionlint]
+    needs: [actionlint, zizmor]
     if: always()
     steps:
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')

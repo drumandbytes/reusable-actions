@@ -48,12 +48,14 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ inputs.python-version }}
       - run: pip install ruff
-      - run: ruff check ${{ inputs.lint-paths }}
-      - run: ruff format --check ${{ inputs.lint-paths }}
+      - run: ruff check ${{ inputs.lint-paths }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
+      - run: ruff format --check ${{ inputs.lint-paths }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
 
   test:
     name: Test
@@ -61,11 +63,13 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ inputs.python-version }}
-      - run: pip install ${{ inputs.test-dependencies }}
-      - run: ${{ inputs.test-command }}
+      - run: pip install ${{ inputs.test-dependencies }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
+      - run: ${{ inputs.test-command }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
 
   validate-action:
     name: Validate action
@@ -73,6 +77,8 @@ jobs:
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ inputs.python-version }}

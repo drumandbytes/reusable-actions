@@ -16,4 +16,8 @@ jobs:
     uses: drumandbytes/reusable-actions/.github/workflows/release-please.yml@v1
     with:
       move-floating-tags: true
-    secrets: inherit
+    # Only the two secrets it uses, rather than `inherit` handing every repo
+    # and org secret to the called workflow.
+    secrets:
+      DNB_ROBOT_CLIENT_ID: ${{ secrets.DNB_ROBOT_CLIENT_ID }}
+      AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
