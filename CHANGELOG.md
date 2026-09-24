@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.0](https://github.com/drumandbytes/reusable-actions/compare/v1.14.0...v1.15.0) (2026-09-24)
+
+
+### Features
+
+* harden, fix and speed up the reusable workflows ([#33](https://github.com/drumandbytes/reusable-actions/issues/33)) ([37b592e](https://github.com/drumandbytes/reusable-actions/commit/37b592ee42f623bb31f19dfddcc3748a4f5ebad7))
+
 ## [1.14.0](https://github.com/drumandbytes/reusable-actions/compare/v1.13.2...v1.14.0) (2026-09-20)
 
 
