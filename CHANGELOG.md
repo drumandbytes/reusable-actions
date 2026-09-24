@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.2](https://github.com/drumandbytes/reusable-actions/compare/v1.16.1...v1.16.2) (2026-09-24)
+
+
+### Performance Improvements
+
+* **security-scan:** keep the Trivy DB between runs on self-hosted runners ([#43](https://github.com/drumandbytes/reusable-actions/issues/43)) ([149b476](https://github.com/drumandbytes/reusable-actions/commit/149b47650fd9a4de66c1d5aa4e104bac597eda56))
+
 ## [1.16.1](https://github.com/drumandbytes/reusable-actions/compare/v1.16.0...v1.16.1) (2026-09-24)
 
 
