@@ -127,9 +127,11 @@ jobs:
 ### `indexnow.yml`
 
 Fetches `https://<host>/sitemap.xml` (following a sitemap index one level)
-and submits every URL to IndexNow. Retries the sitemap fetch while a fresh
-deploy propagates, and never fails the caller's run (`continue-on-error`).
-The site must serve `<key>.txt` at its root.
+and submits every URL to IndexNow, in batches of 10,000 (the API's
+per-request limit). Retries the sitemap fetch while a fresh deploy
+propagates, warns instead of failing on an empty sitemap, and never fails the
+caller's run (`continue-on-error`). The site must serve `<key>.txt` at its
+root.
 
 | Input | Required | Default | Description |
 |---|---|---|---|
@@ -198,8 +200,8 @@ jobs:
 ### `python-action-ci.yml`
 
 For repositories shipping a GitHub Action implemented in Python: ruff lint and
-format check, tests, and a check that `action.yml` parses and required files
-exist.
+format check, tests, and a check that `action.yml` (or `action.yaml`) parses
+and required files exist.
 
 | Input | Required | Default | Description |
 |---|---|---|---|
@@ -298,6 +300,11 @@ Called from a `workflow_run` trigger, not `pull_request`: GitHub gives
 Dependabot-triggered runs a read-only token and no secrets, so a
 `pull_request` job cannot merge them. A `workflow_run` job executes in the base
 repository's context with full permissions.
+
+It acts only on the PR whose head is the exact commit CI ran against; if the
+branch has moved on, the CI run for the new head decides. With
+`use-app-token-for-merge`, the app token is scoped to `contents`,
+`pull-requests` and `workflows` (Dependabot action bumps edit workflow files).
 
 There is no "approve" step — the org ruleset requires zero approving reviews,
 and Actions is blocked from approving PRs org-wide by design.
