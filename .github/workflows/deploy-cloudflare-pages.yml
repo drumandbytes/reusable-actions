@@ -98,9 +98,15 @@ jobs:
       # and a bare self-hosted runner has none (or some other version). Only
       # the npm cache depends on installing -- it hard-fails without a lockfile.
       - uses: actions/setup-node@v7
+        # No dependency cache on self-hosted runners: the VM keeps its own
+        # package cache (~/.npm, the pnpm store) between runs, so restoring
+        # the Actions cache only re-downloads it -- measured at ~70s for a
+        # 286 MB npm cache on the Oracle runners -- and each save bloats it
+        # with whatever the VM has accumulated.
         with:
           node-version: ${{ steps.node.outputs.version }}
-          cache: ${{ inputs.install-dependencies && 'npm' || '' }}
+          cache: ${{ inputs.install-dependencies && runner.environment != 'self-hosted' && 'npm' || '' }}
+          package-manager-cache: ${{ runner.environment != 'self-hosted' }}
           cache-dependency-path: ${{ inputs.install-dependencies && format('{0}/package-lock.json', inputs.working-directory) || '' }}
 
       - if: inputs.install-dependencies

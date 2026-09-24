@@ -12,7 +12,9 @@ on:
       go-version:
         description: >-
           Go version used for every job. Empty (default) reads it from go.mod's
-          go/toolchain directive, so the version lives in one place.
+          go/toolchain directive, so the version lives in one place. Note a
+          patch-level directive (`go 1.27.0`) installs exactly that patch;
+          pass "1.27" here to get the latest 1.27.x instead.
         required: false
         type: string
         default: ""
