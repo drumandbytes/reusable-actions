@@ -121,6 +121,12 @@ jobs:
           # quota and evicts the entries that are actually reused.
           cache-to: ${{ github.ref_name == github.event.repository.default_branch && format('type=gha,mode=max,scope={0}-{1}-{2}', github.workflow, github.job, runner.arch) || '' }}
 
+      # Trivy's vulnerability DB is ~117 MB. On self-hosted runners it lives
+      # in the runner's tool cache, which persists between jobs, and Trivy
+      # only re-downloads it when stale (~6h). The default spot inside the
+      # workspace is wiped by every checkout, and the action's Actions-cache
+      # restore is slow from the Oracle VMs, so each scan there spent ~50s
+      # re-downloading the DB. GitHub-hosted runners keep the default.
       - if: inputs.scan-type == 'fs'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         with:
@@ -132,6 +138,8 @@ jobs:
           skip-dirs: ${{ inputs.skip-dirs }}
           format: table
           exit-code: "1"
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && format('{0}/trivy', runner.tool_cache) || format('{0}/.cache/trivy', github.workspace) }}
 
       - if: inputs.scan-type == 'image'
         uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
@@ -143,6 +151,8 @@ jobs:
           ignore-unfixed: ${{ inputs.ignore-unfixed }}
           format: table
           exit-code: "1"
+          cache: ${{ runner.environment != 'self-hosted' }}
+          cache-dir: ${{ runner.environment == 'self-hosted' && format('{0}/trivy', runner.tool_cache) || format('{0}/.cache/trivy', github.workspace) }}
 
       - name: Clean self-hosted runner Docker storage
         if: ${{ always() && runner.environment == 'self-hosted' }}
