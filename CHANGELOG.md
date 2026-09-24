@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.2](https://github.com/drumandbytes/reusable-actions/compare/v1.17.1...v1.17.2) (2026-09-24)
+
+
+### Performance Improvements
+
+* **security-scan:** keep the Docker layer cache on self-hosted runners ([#51](https://github.com/drumandbytes/reusable-actions/issues/51)) ([0886020](https://github.com/drumandbytes/reusable-actions/commit/088602066edf49b2e037275b0309d4a86193816b))
+
 ## [1.17.1](https://github.com/drumandbytes/reusable-actions/compare/v1.17.0...v1.17.1) (2026-09-24)
 
 
