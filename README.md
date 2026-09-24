@@ -34,6 +34,7 @@ rather than a rewrite of an existing one.
 | [`security-scan.yml`](#security-scanyml) | Trivy scan of the source tree or a built image |
 | [`auto-merge.yml`](#auto-mergeyml) | Enable auto-merge on Dependabot / release PRs once CI passes |
 | [`release-please.yml`](#release-pleaseyml) | Release PRs, tags and GitHub Releases from Conventional Commits |
+| [`zizmor.yml`](#zizmoryml) | Security audit of the repo's own workflows (zizmor) |
 
 Common to all of them:
 
@@ -384,6 +385,51 @@ jobs:
     secrets:
       DNB_ROBOT_CLIENT_ID: ${{ secrets.DNB_ROBOT_CLIENT_ID }}
       AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
+```
+
+### `zizmor.yml`
+
+Runs [zizmor](https://docs.zizmor.sh) over the calling repo's workflows:
+template injection, token and permission handling, unpinned third-party
+actions, cache poisoning. Findings fail the job and are printed in the log
+(no SARIF upload). Put it in the same workflow as the repo's
+`Required checks passed` gate and list it in that job's `needs` so a new
+finding blocks the merge.
+
+Accepted findings go in the caller's `.github/zizmor.yml` (read
+automatically) or inline as `# zizmor: ignore[<audit>] -- <reason>`, always
+with a reason. The auto-merge caller's `workflow_run` trigger is the usual
+one to accept (`dangerous-triggers`): it never checks out PR code.
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `min-severity` | no | `low` | Lowest severity that fails: `informational`, `low`, `medium`, `high` |
+| `version` | no | `1.30.1` | zizmor version, pinned so a new release's audits can't fail every caller at once |
+| `runner` | no | `ubuntu-latest` | Needs Docker |
+
+```yaml
+jobs:
+  zizmor:
+    uses: drumandbytes/reusable-actions/.github/workflows/zizmor.yml@v1
+
+  required-checks-passed:
+    needs: [zizmor, ...]
+```
+
+```yaml
+# .github/zizmor.yml
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        "actions/*": ref-pin
+        "drumandbytes/*": ref-pin
+        "*": hash-pin
+  dangerous-triggers:
+    ignore:
+      # workflow_run so Dependabot PRs get a token that can merge; never
+      # checks out PR code.
+      - auto-merge.yml
 ```
 
 ## Related
