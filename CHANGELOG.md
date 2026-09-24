@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.1](https://github.com/drumandbytes/reusable-actions/compare/v1.17.0...v1.17.1) (2026-09-24)
+
+
+### Miscellaneous Chores
+
+* release 1.17.1 ([#48](https://github.com/drumandbytes/reusable-actions/issues/48)) ([4d09980](https://github.com/drumandbytes/reusable-actions/commit/4d099805fd73e8c3c99f6dd40e903d37d86b9ca8))
+
 ## [1.17.0](https://github.com/drumandbytes/reusable-actions/compare/v1.16.2...v1.17.0) (2026-09-24)
 
 
