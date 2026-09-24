@@ -112,6 +112,7 @@ Builds and deploys a Cloudflare Pages site. Defaults target a Vite-style app
 | `node-version` | no | `24` | Fallback Node.js version |
 | `build-env` | no | `{}` | JSON object of build-time env vars, e.g. Vite `VITE_*` values |
 | `runner` | no | `ubuntu-latest` | |
+| `sitemap-artifact` | no | `""` | Upload the built `sitemap*.xml` files as this artifact, for `indexnow.yml` |
 
 Secrets as for the Worker deploy. Callers must grant `deployments: write` so
 wrangler can record a GitHub Deployment — a reusable workflow cannot elevate
@@ -136,29 +137,37 @@ jobs:
 
 ### `indexnow.yml`
 
-Fetches `https://<host>/sitemap.xml` (following a sitemap index one level)
-and submits every URL to IndexNow, in batches of 10,000 (the API's
-per-request limit). Retries the sitemap fetch while a fresh deploy
-propagates, warns instead of failing on an empty sitemap, and never fails the
-caller's run (`continue-on-error`). The site must serve `<key>.txt` at its
-root.
+Reads the site's `sitemap.xml` (following a sitemap index one level) and
+submits every URL to IndexNow, in batches of 10,000 (the API's per-request
+limit). With `sitemap-artifact` it reads the sitemaps from the deploy job's
+artifact; otherwise it fetches `https://<host>/sitemap.xml`, retrying while a
+fresh deploy propagates. Prefer the artifact: Cloudflare can refuse
+GitHub-hosted runner IPs. Warns instead of failing on an empty sitemap, and
+never fails the caller's run (`continue-on-error`). The site must serve
+`<key>.txt` at its root.
 
 | Input | Required | Default | Description |
 |---|---|---|---|
 | `host` | yes | — | Hostname, e.g. `eraser.drumandbytes.dev` |
 | `key` | yes | — | IndexNow key — pass the org's `INDEXNOW_KEY` variable |
 | `runner` | no | `ubuntu-latest` | |
+| `sitemap-artifact` | no | `""` | Artifact holding the built sitemaps, paths as served (`sitemap.xml` at its root) |
 
 ```yaml
 jobs:
   deploy:
+    uses: drumandbytes/reusable-actions/.github/workflows/deploy-cloudflare-pages.yml@v1
+    with:
+      project-name: my-site
+      sitemap-artifact: sitemap
     # ...
   indexnow:
     needs: deploy
     uses: drumandbytes/reusable-actions/.github/workflows/indexnow.yml@v1
     with:
-      host: eraser.drumandbytes.dev
+      host: my-site.example.com
       key: ${{ vars.INDEXNOW_KEY }}
+      sitemap-artifact: sitemap
 ```
 
 ### `node-ci.yml`
