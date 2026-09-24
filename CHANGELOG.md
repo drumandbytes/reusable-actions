@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.0](https://github.com/drumandbytes/reusable-actions/compare/v1.15.2...v1.16.0) (2026-09-24)
+
+
+### Features
+
+* self-test the workflows, share the node lookup, fix silent failures ([#39](https://github.com/drumandbytes/reusable-actions/issues/39)) ([c63dc27](https://github.com/drumandbytes/reusable-actions/commit/c63dc27986186203d02ab9e6a35fac74de7bc1be))
+
 ## [1.15.2](https://github.com/drumandbytes/reusable-actions/compare/v1.15.1...v1.15.2) (2026-09-24)
 
 
