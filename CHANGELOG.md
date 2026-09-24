@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.0](https://github.com/drumandbytes/reusable-actions/compare/v1.17.2...v1.18.0) (2026-09-24)
+
+
+### Features
+
+* **indexnow:** read the sitemap from a build artifact ([#53](https://github.com/drumandbytes/reusable-actions/issues/53)) ([4bf9d0b](https://github.com/drumandbytes/reusable-actions/commit/4bf9d0b8798d7e16bc3111d923046c190b51984c))
+
 ## [1.17.2](https://github.com/drumandbytes/reusable-actions/compare/v1.17.1...v1.17.2) (2026-09-24)
 
 
