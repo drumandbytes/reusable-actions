@@ -28,11 +28,3 @@ rules:
       - deploy-cloudflare-pages.yml
       - deploy-cloudflare-worker.yml
 
-  github-app:
-    ignore:
-      # TODO: scope down with permission-* inputs, as auto-merge.yml does.
-      # Held back because release-please's README asks for issues: write
-      # (for its autorelease labels) and it's unconfirmed the dnb-robot app
-      # holds that -- requesting a permission the app lacks fails token
-      # creation, which would stop releases in every repo at once.
-      - release-please.yml

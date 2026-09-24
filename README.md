@@ -349,7 +349,8 @@ Opens and updates a release PR with the version bump and `CHANGELOG.md`, then
 tags and publishes a GitHub Release once it is merged. Expects
 `release-please-config.json` and `.release-please-manifest.json` in the
 calling repo's root. Runs as the dnb-robot app so tag pushes get past the
-`protecting-main` ruleset.
+`protecting-main` ruleset, with the token scoped to `contents`,
+`pull-requests` and `issues` (for release-please's labels).
 
 | Input | Required | Default | Description |
 |---|---|---|---|
