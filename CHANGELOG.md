@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.1](https://github.com/drumandbytes/reusable-actions/compare/v1.15.0...v1.15.1) (2026-09-24)
+
+
+### Bug Fixes
+
+* **deps:** bump pnpm/action-setup in the actions group ([#35](https://github.com/drumandbytes/reusable-actions/issues/35)) ([db9feeb](https://github.com/drumandbytes/reusable-actions/commit/db9feeb958e71c37c49dc360d87f1c4c6e4df2c8))
+
 ## [1.15.0](https://github.com/drumandbytes/reusable-actions/compare/v1.14.0...v1.15.0) (2026-09-24)
 
 
