@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.17.0](https://github.com/drumandbytes/reusable-actions/compare/v1.16.2...v1.17.0) (2026-09-24)
+
+
+### Features
+
+* reusable zizmor workflow for auditing callers' workflows ([#45](https://github.com/drumandbytes/reusable-actions/issues/45)) ([4b33bc1](https://github.com/drumandbytes/reusable-actions/commit/4b33bc1048f0450555ab2913d79269cf0d775396))
+
 ## [1.16.2](https://github.com/drumandbytes/reusable-actions/compare/v1.16.1...v1.16.2) (2026-09-24)
 
 
