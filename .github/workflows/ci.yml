@@ -50,22 +50,12 @@ jobs:
 
   # Security audit of the workflow definitions themselves (injection, token
   # handling, unpinned third-party actions). Every org repo runs this code,
-  # so it is checked here rather than in each caller. Accepted findings are
-  # documented in .github/zizmor.yml. No SARIF upload, same reasoning as
-  # security-scan.yml: fail the job and print the findings.
+  # so it is checked here too -- through the local copy of the same reusable
+  # zizmor.yml callers use, which also self-tests it. Accepted findings are
+  # documented in .github/zizmor.yml.
   zizmor:
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          persist-credentials: false
-
-      - uses: zizmorcore/zizmor-action@cc914d7f3750a2d13d75c7f184a1060aa0e9d482 # v0.6.4
-        with:
-          advanced-security: false
-          # Pinned so a new zizmor audit can't turn an unrelated PR red.
-          version: 1.30.1
+    name: zizmor
+    uses: ./.github/workflows/zizmor.yml
 
   # --- Self-tests -----------------------------------------------------------
   # Linting alone can't show a reusable workflow actually works. These run the

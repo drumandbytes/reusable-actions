@@ -28,10 +28,11 @@ truth if the two ever disagree.
 | `python-action-ci.yml` | `test-dependencies` | — |
 | `indexnow.yml` | `host`, `key` | — |
 | `release-please.yml` | none | `DNB_ROBOT_CLIENT_ID`, `AUTOMATION_APP_PRIVATE_KEY` |
+| `zizmor.yml` | none | — |
 
 `ci.yml`, `dependabot-auto-merge.yml`, `self-release-please.yml` are this
 repo's own CI/release plumbing — no `workflow_call` trigger, not meant for
-callers. `ci.yml` runs actionlint and zizmor; accepted zizmor findings live in
+callers. `ci.yml` runs actionlint and zizmor (via the local `zizmor.yml`, which self-tests it); accepted zizmor findings live in
 `.github/zizmor.yml` (or inline `# zizmor: ignore[...]`) with a reason each.
 
 ## Shared steps and self-tests
