@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.16.1](https://github.com/drumandbytes/reusable-actions/compare/v1.16.0...v1.16.1) (2026-09-24)
+
+
+### Performance Improvements
+
+* skip the Actions npm cache on self-hosted runners ([#41](https://github.com/drumandbytes/reusable-actions/issues/41)) ([d9340fc](https://github.com/drumandbytes/reusable-actions/commit/d9340fcdbff5d7834f4bd524237869260bd20168))
+
 ## [1.16.0](https://github.com/drumandbytes/reusable-actions/compare/v1.15.2...v1.16.0) (2026-09-24)
 
 
