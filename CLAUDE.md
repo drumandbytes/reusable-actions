@@ -57,7 +57,15 @@ fails CI.
 
 Author commits as the repo owner, not Claude. No `Co-Authored-By: Claude`
 trailer, no `Claude-Session:` line, and no "Generated with Claude Code"
-footer in commit messages or PR descriptions.
+footer in commit messages or PR descriptions. Cloud sessions reset the git
+identity, so check `git config user.name` before each commit. The GitHub
+connector appends a footer to new PR bodies; re-set the body to remove it.
+
+## Comments
+
+Keep only the non-obvious why. No change history ("used to", "replaces X"),
+no restating the code, one or two lines where possible. Applies to caller
+repos too.
 
 ## Versioning
 
@@ -66,3 +74,15 @@ backwards-compatible changes; a breaking change gets a new major tag rather
 than a rewrite of an existing one. Squash-merge PRs with a Conventional
 Commits title — release-please reads that history to cut releases and move
 the floating tags.
+
+`refactor:`, `chore:`, `ci:` and `docs:` cut no release. To ship them without
+waiting for a fix or feat, merge an empty commit with a `Release-As: X.Y.Z`
+footer; a patch bump is auto-merged by dnb-robot.
+
+## Runners
+
+Public org repos run on GitHub-hosted runners (free). Private repos run on
+the two self-hosted `oracle-x64` VMs, so bursts of PRs queue. Plan: move
+light private-repo jobs (zizmor, lint, the required-checks gate) back to
+GitHub-hosted once monthly minutes allow. actionlint flags `oracle-x64` as
+an unknown label in callers; that's expected.
