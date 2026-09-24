@@ -3,12 +3,9 @@ description: >-
   Node version for a job: the nearest `node = "…"` pin in mise.toml or
   .mise.toml, searching from a directory up to the repo root, else a default.
 
-# Shared by the Node-based reusable workflows in this repo, which call it as
-# `uses: $/.github/actions/resolve-node-version`. `$/` resolves to this repo
-# at the exact commit the workflow is running from -- the @v1 a caller
-# pinned, or a PR branch in this repo's own CI -- so the workflow and this
-# action can never drift apart. (A `./` path would point into the caller's
-# checkout instead.) Requires Actions runner 2.336.0 or newer.
+# Called as `$/.github/actions/resolve-node-version`, which resolves to the
+# workflow's own commit (`./` would be the caller's checkout). Needs runner
+# 2.336.0+.
 
 inputs:
   default:
@@ -16,9 +13,8 @@ inputs:
     required: true
   working-directory:
     description: >-
-      Directory to start searching from, relative to the repo root. Composite
-      steps don't inherit the job's defaults.run.working-directory, so it has
-      to be passed explicitly.
+      Directory to search up from. Composite steps don't inherit the job's
+      working-directory, so pass it.
     required: false
     default: "."
 
@@ -30,15 +26,7 @@ outputs:
 runs:
   using: composite
   steps:
-    # mise.toml is the source of truth for repos that have one, so a version
-    # lives in exactly one place instead of being repeated in every workflow
-    # that calls this. Falls back to the default for callers that have no
-    # mise.toml -- most of them, so this must stay a fallback rather than a
-    # requirement.
-    #
-    # Walks from the working directory up to the repo root, nearest node pin
-    # wins -- the way mise itself resolves config, so a single root mise.toml
-    # covers packages and workers living in subdirectories.
+    # Nearest pin wins, as in mise itself.
     - id: resolve
       shell: bash
       working-directory: ${{ inputs.working-directory }}

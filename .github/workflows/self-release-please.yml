@@ -1,8 +1,6 @@
 name: Release Please (self)
 
-# This repo dogfoods its own release-please.yml the same way every external
-# consumer does: through the tagged, released interface, not a local path
-# reference - so a break in what consumers actually get doesn't go unnoticed.
+# Uses the released @v1, like every caller, not a local path.
 
 on:
   push:
@@ -16,8 +14,6 @@ jobs:
     uses: drumandbytes/reusable-actions/.github/workflows/release-please.yml@v1
     with:
       move-floating-tags: true
-    # Only the two secrets it uses, rather than `inherit` handing every repo
-    # and org secret to the called workflow.
     secrets:
       DNB_ROBOT_CLIENT_ID: ${{ secrets.DNB_ROBOT_CLIENT_ID }}
       AUTOMATION_APP_PRIVATE_KEY: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}

@@ -2,59 +2,43 @@ name: Auto merge
 
 # Enables auto-merge on a PR once its CI run has passed.
 #
-# Triggered from a caller's `workflow_run` rather than `pull_request` on
-# purpose: GitHub withholds Actions secrets and gives a read-only GITHUB_TOKEN
-# to Dependabot-triggered runs, so a `pull_request`-based job cannot merge them.
-# A `workflow_run` job executes in the base repository's context with full
-# permissions, which is what makes this work for Dependabot at all.
-#
-# There is deliberately no "approve the PR" step. The org ruleset requires a
-# pull request but zero approving reviews, so approval is unnecessary — and
-# GitHub Actions is blocked from approving PRs org-wide
-# (can_approve_pull_request_reviews = false), which is a deliberate hardening
-# choice we do not want to reverse just to satisfy a decorative step.
+# Callers trigger this from workflow_run, not pull_request: Dependabot's
+# pull_request runs get no secrets and a read-only token, so they can't merge.
+# No approve step: the ruleset needs no approvals, and Actions can't approve
+# PRs in this org.
 
 on:
   workflow_call:
     inputs:
       allowed-authors:
         description: >-
-          JSON array of PR authors eligible for auto-merge no matter what
-          they change. Defaults to Dependabot only. Widening this on a
-          public repository would auto-merge outside contributions — do not
-          do that casually.
+          JSON array of PR authors merged whatever they change. Don't widen
+          this on a public repo; it would auto-merge outside contributions.
         required: false
         type: string
         default: '["dependabot[bot]"]'
       patch-only-authors:
         description: >-
-          JSON array of PR authors eligible for auto-merge only when
-          .release-please-manifest.json's root (".") version is a patch bump
-          (major.minor unchanged) over the base branch. A minor/major bump
-          is left for manual review. For release-please's PR author.
+          JSON array of PR authors merged only when .release-please-manifest.json's
+          root version is a patch bump. For release-please's PRs.
         required: false
         type: string
         default: '[]'
       merge-method:
-        description: One of squash, merge, rebase.
+        description: squash, merge or rebase.
         required: false
         type: string
         default: squash
       use-app-token-for-merge:
         description: >-
-          Merge with a GitHub App installation token (DNB_ROBOT_CLIENT_ID /
-          AUTOMATION_APP_PRIVATE_KEY, both required if this is true) instead of
-          GITHUB_TOKEN. GitHub deliberately excludes GITHUB_TOKEN-authored
-          pushes from triggering further workflow runs — harmless for a plain
-          Dependabot merge, but it means a merged release-please PR never
-          re-triggers release-please to actually cut the tag/release, leaving
-          the manifest/changelog bumped with nothing built. Off by default:
-          every existing caller keeps today's behavior unless it opts in.
+          Merge with the dnb-robot app token (needs both secrets) instead of
+          GITHUB_TOKEN. A GITHUB_TOKEN merge triggers no workflows, so a merged
+          release PR would never cut its release.
         required: false
         type: boolean
         default: false
       runner:
-        description: runs-on value for this workflow's job.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -88,9 +72,8 @@ jobs:
               state: 'open',
               head: `${run.head_repository.owner.login}:${run.head_branch}`,
             });
-            // Match on the exact commit CI ran against, not just the branch:
-            // a branch can back PRs into more than one base, and if the head
-            // moved on since this run, the CI run for the new head decides.
+            // Match the commit CI ran on: if the head has moved on, that
+            // newer run decides.
             const pr = prs.data.find((p) => p.head.sha === run.head_sha);
             if (!pr) {
               core.info(prs.data.length === 0
@@ -116,13 +99,7 @@ jobs:
               return setEligible(false, `author is not in allowed-authors (${JSON.stringify(allowed)}) or patch-only-authors (${JSON.stringify(patchOnly)})`);
             }
 
-            // release-please keeps this file's root (".") version in sync
-            // with the PR title as it force-pushes over the life of the PR,
-            // so diffing it base vs. head is a stable way to size the bump
-            // without parsing the title.
-            // A missing manifest (e.g. the very first release PR) or root
-            // entry means the bump can't be sized: leave it for a human
-            // rather than failing the run.
+            // Size the bump from the manifest's root version, base vs head.
             const versionAt = async (ref) => {
               try {
                 const { data } = await github.rest.repos.getContent({
@@ -156,9 +133,7 @@ jobs:
         with:
           client-id: ${{ secrets.DNB_ROBOT_CLIENT_ID }}
           private-key: ${{ secrets.AUTOMATION_APP_PRIVATE_KEY }}
-          # Just what a merge needs, not the app's whole installation grant.
-          # workflows: Dependabot's github-actions PRs edit workflow files,
-          # and GitHub refuses to let an app merge those without it.
+          # workflows: needed to merge PRs that touch workflow files.
           permission-contents: write
           permission-pull-requests: write
           permission-workflows: write
@@ -169,8 +144,6 @@ jobs:
           GH_TOKEN: ${{ inputs.use-app-token-for-merge && steps.app-token.outputs.token || secrets.GITHUB_TOKEN }}
           MERGE_METHOD: ${{ inputs.merge-method }}
           PR_NUMBER: ${{ steps.pr.outputs.number }}
-        # Values are passed through the environment rather than interpolated
-        # into the command, so a caller cannot inject shell.
         run: |
           case "$MERGE_METHOD" in
             squash|merge|rebase) ;;

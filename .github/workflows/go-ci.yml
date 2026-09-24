@@ -1,20 +1,14 @@
 name: Go CI
 
-# Build, vet, format check, test, golangci-lint, and (optionally) hadolint for
-# a Go repository. Replaces the near-identical ci.yml/validate.yml files in
-# eraser, nordvpn, and pve-metrics-exporter, which differed only in Go
-# version, whether tests ran with -race, whether golangci-lint was included,
-# and whether there was a Dockerfile to hadolint.
+# Build, vet, gofmt, test, golangci-lint and optionally hadolint.
 
 on:
   workflow_call:
     inputs:
       go-version:
         description: >-
-          Go version used for every job. Empty (default) reads it from go.mod's
-          go/toolchain directive, so the version lives in one place. Note a
-          patch-level directive (`go 1.27.0`) installs exactly that patch;
-          pass "1.27" here to get the latest 1.27.x instead.
+          Go version. Empty reads go.mod, where `go 1.27.0` means exactly that
+          patch; pass "1.27" for the latest 1.27.x.
         required: false
         type: string
         default: ""
@@ -29,19 +23,12 @@ on:
         type: boolean
         default: true
       golangci-lint-version:
-        description: >-
-          Version tag for golangci-lint-action. "latest" resolves to the
-          current v2.x line - v6 of this action resolved "latest" to an old
-          v1.x binary built with an older Go toolchain, which then refused to
-          lint a newer module (confirmed: v9 correctly resolves to v2.x).
+        description: golangci-lint version.
         required: false
         type: string
         default: "latest"
       dockerfile-path:
-        description: >-
-          Path to a Dockerfile to lint with hadolint. Empty string (default)
-          skips the hadolint job entirely - not every Go repo this workflow
-          serves ships a container image.
+        description: Dockerfile to lint with hadolint. Empty skips it.
         required: false
         type: string
         default: ""
@@ -74,9 +61,8 @@ jobs:
         run: |
           unformatted=$(gofmt -l .)
           if [ -n "$unformatted" ]; then
-            echo "The following files are not gofmt-formatted:"
+            echo "::error::not gofmt-formatted (run gofmt -w .):"
             echo "$unformatted"
-            echo "Run 'gofmt -w .' locally and commit the result."
             exit 1
           fi
 

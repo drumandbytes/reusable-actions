@@ -1,54 +1,44 @@
 name: Node CI
 
-# Lint plus a per-package check matrix for repos holding several npm packages
-# in subdirectories. Replaces the ci.yml files in road-conditions-ee and
-# cloudflare-workers, which had the same shape (one root lint job, then one job
-# per package running typecheck and tests) and differed only in package names
-# and action versions.
+# A root lint job plus one check job per package directory.
 
 on:
   workflow_call:
     inputs:
       node-version:
-        description: Node.js version used for every job.
+        description: Node.js version, unless mise.toml pins one.
         required: false
         type: string
         default: "24"
       run-lint:
-        description: Run the root-level lint job.
+        description: Run the lint job.
         required: false
         type: boolean
         default: true
       lint-directory:
-        description: Directory the lint job installs and runs in.
+        description: Directory the lint job runs in.
         required: false
         type: string
         default: "."
       lint-command:
-        description: Command the lint job runs.
+        description: Lint command.
         required: false
         type: string
         default: "npm run lint"
       package-manager:
-        description: >-
-          "npm" or "pnpm". pnpm workspaces need pnpm/action-setup before
-          setup-node so the store can be cached, and use a different lockfile.
+        description: '"npm" or "pnpm" (workspace, lockfile at the repo root).'
         required: false
         type: string
         default: "npm"
       packages:
         description: >-
-          JSON array of {"directory": "...", "command": "..."} objects, one per
-          package to check. Each entry gets its own job running `npm ci` in that
-          directory followed by the given command, e.g.
-          [{"directory":"api-worker","command":"npm run typecheck && npm test"}]
-          An optional "name" overrides the job name, useful when several entries
-          share a directory (e.g. a workspace root).
+          JSON array of {"directory", "command", optional "name"}, one job each,
+          e.g. [{"directory":"api-worker","command":"npm run typecheck && npm test"}].
         required: false
         type: string
         default: "[]"
       runner:
-        description: runs-on value for every job in this workflow.
+        description: runs-on value.
         required: false
         type: string
         default: "ubuntu-latest"
@@ -67,9 +57,7 @@ jobs:
         working-directory: ${{ inputs.lint-directory }}
     steps:
       - name: Validate package-manager
-        # Runs before checkout, when the job's default working directory
-        # doesn't exist yet.
-        working-directory: .
+        working-directory: . # before checkout, lint-directory doesn't exist yet
         env:
           PACKAGE_MANAGER: ${{ inputs.package-manager }}
         run: |
@@ -88,12 +76,9 @@ jobs:
           working-directory: ${{ inputs.lint-directory }}
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: inputs.package-manager == 'pnpm'
+      # No Actions cache on self-hosted runners: they keep their package cache
+      # between runs, and restoring the cache there is slower than not.
       - uses: actions/setup-node@v7
-        # No dependency cache on self-hosted runners: the VM keeps its own
-        # package cache (~/.npm, the pnpm store) between runs, so restoring
-        # the Actions cache only re-downloads it -- measured at ~70s for a
-        # 286 MB npm cache on the Oracle runners -- and each save bloats it
-        # with whatever the VM has accumulated.
         with:
           node-version: ${{ steps.node.outputs.version }}
           cache: ${{ runner.environment != 'self-hosted' && inputs.package-manager || '' }}
@@ -108,10 +93,7 @@ jobs:
 
   check:
     name: ${{ matrix.package.name || matrix.package.directory }}
-    # An empty packages array yields an empty matrix, which GitHub treats as an
-    # error rather than a skip — so guard on it explicitly. Checks the parsed
-    # array, not the raw string, so "[ ]" or a `|` block's trailing newline
-    # still counts as empty.
+    # An empty matrix is an error, not a skip.
     if: fromJSON(inputs.packages)[0] != null
     runs-on: ${{ inputs.runner }}
     timeout-minutes: 60
@@ -124,8 +106,6 @@ jobs:
         working-directory: ${{ matrix.package.directory }}
     steps:
       - name: Validate package-manager
-        # Runs before checkout, when the job's default working directory
-        # doesn't exist yet.
         working-directory: .
         env:
           PACKAGE_MANAGER: ${{ inputs.package-manager }}
@@ -146,18 +126,12 @@ jobs:
       - uses: pnpm/action-setup@ea17c68df8912ef543352723c149a84f56e3d413 # v6.1.0
         if: inputs.package-manager == 'pnpm'
       - uses: actions/setup-node@v7
-        # No dependency cache on self-hosted runners: the VM keeps its own
-        # package cache (~/.npm, the pnpm store) between runs, so restoring
-        # the Actions cache only re-downloads it -- measured at ~70s for a
-        # 286 MB npm cache on the Oracle runners -- and each save bloats it
-        # with whatever the VM has accumulated.
         with:
           node-version: ${{ steps.node.outputs.version }}
           cache: ${{ runner.environment != 'self-hosted' && inputs.package-manager || '' }}
           package-manager-cache: ${{ runner.environment != 'self-hosted' }}
           cache-dependency-path: ${{ inputs.package-manager == 'pnpm' && 'pnpm-lock.yaml' || format('{0}/package-lock.json', matrix.package.directory) }}
-      # pnpm workspaces keep one lockfile at the repo root and install every
-      # workspace package from there, so this must not run in the package dir.
+      # pnpm workspaces install from the root lockfile.
       - if: inputs.package-manager == 'pnpm'
         working-directory: .
         run: pnpm install --frozen-lockfile

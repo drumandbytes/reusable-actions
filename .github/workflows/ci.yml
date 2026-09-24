@@ -1,22 +1,11 @@
 name: CI
 
-# This repo's actual content is its workflow_call definitions - every file
-# in workflows/ is a reusable workflow other repos consume, not something
-# that runs here directly. actionlint validates that YAML/expression syntax
-# (including workflow_call inputs/outputs) so a broken definition is caught
-# here, not silently in every consuming repo's next run.
+# No paths-ignore: a filtered-out run never reports required-checks-passed,
+# which the org ruleset requires, so the PR could never merge.
 
 on:
   pull_request:
     branches: [main]
-
-# No paths-ignore here on purpose: this workflow hosts required-checks-passed,
-# which the org's branch ruleset requires by name on every PR. A path filter
-# on the workflow trigger means GitHub never even starts the run for an
-# excluded diff (e.g. a docs-only PR) -- not "skipped", just never reported --
-# so the ruleset's required check sits at "Expected" forever and the PR can't
-# merge. Filter what runs inside jobs (paths-filter, changed-files, etc.) if
-# needed, never the trigger.
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -34,35 +23,21 @@ jobs:
         with:
           persist-credentials: false
 
-      # Pinned rather than fetched from actionlint's main branch, which would
-      # run whatever script is there today. Dependabot can't see this one --
-      # bump the version by hand.
+      # Dependabot can't see this pin; bump by hand.
       - name: Install actionlint
         env:
           ACTIONLINT_VERSION: 1.7.12
         run: |
           bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "$ACTIONLINT_VERSION"
 
-      # actionlint (as of 1.7.12) predates GitHub's `$/` self-repository
-      # syntax and rejects it as a malformed action reference. Ignore exactly
-      # that message; drop the flag once actionlint supports `$/`.
+      # actionlint doesn't know `$/` yet; drop the ignore once it does.
       - run: ./actionlint -color -ignore 'action "\$/[^"]*" in invalid format'
 
-  # Security audit of the workflow definitions themselves (injection, token
-  # handling, unpinned third-party actions). Every org repo runs this code,
-  # so it is checked here too -- through the local copy of the same reusable
-  # zizmor.yml callers use, which also self-tests it. Accepted findings are
-  # documented in .github/zizmor.yml.
   zizmor:
     name: zizmor
     uses: ./.github/workflows/zizmor.yml
 
-  # --- Self-tests -----------------------------------------------------------
-  # Linting alone can't show a reusable workflow actually works. These run the
-  # PR's own copies (local ./ paths, not the released @v1) against the minimal
-  # projects in tests/fixtures/. Deploys, go-ci and python-action-ci aren't
-  # covered: the first need Cloudflare secrets, the others take no
-  # subdirectory input to point at a fixture.
+  # Self-tests: the PR's own workflows (local ./ paths) against tests/fixtures/.
 
   test-resolve-node-version:
     name: Test resolve-node-version
@@ -72,14 +47,12 @@ jobs:
       - uses: actions/checkout@v7
         with:
           persist-credentials: false
-      # The pin sits in tests/fixtures/mise.toml, one level above the start
-      # directory, so this only passes if the lookup walks up.
+      # The pin is one level up in tests/fixtures/mise.toml, so this tests the walk up.
       - id: pinned
         uses: $/.github/actions/resolve-node-version
         with:
           default: "24"
           working-directory: tests/fixtures/node
-      # No mise config anywhere between .github/ and the repo root.
       - id: fallback
         uses: $/.github/actions/resolve-node-version
         with:
@@ -91,14 +64,12 @@ jobs:
         run: |
           [ "$PINNED" = 22 ] || { echo "::error::expected 22 from tests/fixtures/mise.toml, got '$PINNED'"; exit 1; }
           [ "$FALLBACK" = 24 ] || { echo "::error::expected the default 24, got '$FALLBACK'"; exit 1; }
-          echo "pinned=$PINNED fallback=$FALLBACK"
 
   test-node-ci:
     name: Test node-ci
     uses: ./.github/workflows/node-ci.yml
     with:
       lint-directory: tests/fixtures/node
-      # index.js exits non-zero unless Node came from tests/fixtures/mise.toml.
       packages: '[{"directory": "tests/fixtures/node", "command": "npm test"}]'
 
   test-opentofu-validate:
@@ -121,8 +92,7 @@ jobs:
       image-context: tests/fixtures/image
       dockerfile: tests/fixtures/image/Dockerfile
 
-  # Single stable name for the org's required-status-check ruleset to point
-  # at, regardless of how the real jobs above are split or renamed.
+  # The one name the ruleset requires, however the jobs above change.
   required-checks-passed:
     name: Required checks passed
     runs-on: ubuntu-latest
