@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.15.2](https://github.com/drumandbytes/reusable-actions/compare/v1.15.1...v1.15.2) (2026-09-24)
+
+
+### Bug Fixes
+
+* **release-please:** scope the app token to what release-please needs ([#37](https://github.com/drumandbytes/reusable-actions/issues/37)) ([36d96cc](https://github.com/drumandbytes/reusable-actions/commit/36d96cc91010288bed9f5c1426d6122955dc5f90))
+
 ## [1.15.1](https://github.com/drumandbytes/reusable-actions/compare/v1.15.0...v1.15.1) (2026-09-24)
 
 
