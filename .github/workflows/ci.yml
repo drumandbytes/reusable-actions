@@ -43,7 +43,10 @@ jobs:
         run: |
           bash <(curl -fsSL "https://raw.githubusercontent.com/rhysd/actionlint/v${ACTIONLINT_VERSION}/scripts/download-actionlint.bash") "$ACTIONLINT_VERSION"
 
-      - run: ./actionlint -color
+      # actionlint (as of 1.7.12) predates GitHub's `$/` self-repository
+      # syntax and rejects it as a malformed action reference. Ignore exactly
+      # that message; drop the flag once actionlint supports `$/`.
+      - run: ./actionlint -color -ignore 'action "\$/[^"]*" in invalid format'
 
   # Security audit of the workflow definitions themselves (injection, token
   # handling, unpinned third-party actions). Every org repo runs this code,
@@ -64,13 +67,84 @@ jobs:
           # Pinned so a new zizmor audit can't turn an unrelated PR red.
           version: 1.30.1
 
+  # --- Self-tests -----------------------------------------------------------
+  # Linting alone can't show a reusable workflow actually works. These run the
+  # PR's own copies (local ./ paths, not the released @v1) against the minimal
+  # projects in tests/fixtures/. Deploys, go-ci and python-action-ci aren't
+  # covered: the first need Cloudflare secrets, the others take no
+  # subdirectory input to point at a fixture.
+
+  test-resolve-node-version:
+    name: Test resolve-node-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      # The pin sits in tests/fixtures/mise.toml, one level above the start
+      # directory, so this only passes if the lookup walks up.
+      - id: pinned
+        uses: $/.github/actions/resolve-node-version
+        with:
+          default: "24"
+          working-directory: tests/fixtures/node
+      # No mise config anywhere between .github/ and the repo root.
+      - id: fallback
+        uses: $/.github/actions/resolve-node-version
+        with:
+          default: "24"
+          working-directory: .github
+      - env:
+          PINNED: ${{ steps.pinned.outputs.version }}
+          FALLBACK: ${{ steps.fallback.outputs.version }}
+        run: |
+          [ "$PINNED" = 22 ] || { echo "::error::expected 22 from tests/fixtures/mise.toml, got '$PINNED'"; exit 1; }
+          [ "$FALLBACK" = 24 ] || { echo "::error::expected the default 24, got '$FALLBACK'"; exit 1; }
+          echo "pinned=$PINNED fallback=$FALLBACK"
+
+  test-node-ci:
+    name: Test node-ci
+    uses: ./.github/workflows/node-ci.yml
+    with:
+      lint-directory: tests/fixtures/node
+      # index.js exits non-zero unless Node came from tests/fixtures/mise.toml.
+      packages: '[{"directory": "tests/fixtures/node", "command": "npm test"}]'
+
+  test-opentofu-validate:
+    name: Test opentofu-validate
+    uses: ./.github/workflows/opentofu-validate.yml
+    with:
+      working-directory: tests/fixtures/tofu
+
+  test-security-scan-fs:
+    name: Test security-scan (fs)
+    uses: ./.github/workflows/security-scan.yml
+    with:
+      scan-ref: tests/fixtures
+
+  test-security-scan-image:
+    name: Test security-scan (image)
+    uses: ./.github/workflows/security-scan.yml
+    with:
+      scan-type: image
+      image-context: tests/fixtures/image
+      dockerfile: tests/fixtures/image/Dockerfile
+
   # Single stable name for the org's required-status-check ruleset to point
   # at, regardless of how the real jobs above are split or renamed.
   required-checks-passed:
     name: Required checks passed
     runs-on: ubuntu-latest
     timeout-minutes: 60
-    needs: [actionlint, zizmor]
+    needs:
+      - actionlint
+      - zizmor
+      - test-resolve-node-version
+      - test-node-ci
+      - test-opentofu-validate
+      - test-security-scan-fs
+      - test-security-scan-image
     if: always()
     steps:
       - if: contains(needs.*.result, 'failure') || contains(needs.*.result, 'cancelled')

@@ -43,7 +43,13 @@ Common to all of them:
 - **Timeouts** — every job is capped at 60 minutes.
 - **Node version** — the Node-based workflows read `node = "…"` from the
   nearest `mise.toml` / `.mise.toml`, searching from the working directory up
-  to the repo root. The `node-version` input is only the fallback.
+  to the repo root. The `node-version` input is only the fallback. The lookup
+  is the composite action `.github/actions/resolve-node-version`, which the
+  workflows call with GitHub's `$/` syntax so it always runs from the same
+  commit as the workflow itself.
+- **Self-hosted runners** — need Actions runner **2.336.0 or newer** (for
+  `$/`), plus `node`, `jq` and `unzip` on the host. GitHub-hosted runners have
+  all of these.
 
 ### `deploy-cloudflare-worker.yml`
 
@@ -55,7 +61,7 @@ rather than race; only the newest waiting run proceeds.
 |---|---|---|---|
 | `working-directory` | yes | — | Directory holding the worker's wrangler config and `package.json` |
 | `node-version` | no | `24` | Fallback Node.js version (see mise note above) |
-| `install-dependencies` | no | `true` | Run `npm ci` first. `false` for workers with no `package-lock.json` |
+| `install-dependencies` | no | `true` | Run `npm ci` first. `false` for workers with no `package-lock.json` (Node is still set up for wrangler) |
 | `runner` | no | `ubuntu-latest` | |
 
 | Secret | Required | Description |
@@ -96,7 +102,7 @@ Builds and deploys a Cloudflare Pages site. Defaults target a Vite-style app
 |---|---|---|---|
 | `project-name` | yes | — | Cloudflare Pages project to deploy to |
 | `working-directory` | no | `.` | Directory containing the site |
-| `install-dependencies` | no | `true` | Run `npm ci` first; `false` for static sites with no lockfile |
+| `install-dependencies` | no | `true` | Run `npm ci` first; `false` for static sites with no lockfile (Node is still set up) |
 | `build-command` | no | `npm run build` | Shell command run before deploy; empty string deploys sources as-is |
 | `output-directory` | no | `dist` | Directory wrangler publishes, relative to `working-directory` |
 | `node-version` | no | `24` | Fallback Node.js version |
@@ -161,7 +167,7 @@ One root lint job, then one job per package running its check command.
 | `run-lint` | no | `true` | Run the lint job |
 | `lint-directory` | no | `.` | Where the lint job installs and runs |
 | `lint-command` | no | `npm run lint` | |
-| `package-manager` | no | `npm` | `npm` or `pnpm` (pnpm installs once from the workspace root) |
+| `package-manager` | no | `npm` | `npm` or `pnpm` (pnpm installs once from the workspace root); anything else fails the job |
 | `node-version` | no | `24` | Fallback Node.js version |
 | `runner` | no | `ubuntu-latest` | |
 
@@ -207,6 +213,7 @@ and required files exist.
 |---|---|---|---|
 | `test-dependencies` | yes | — | Space-separated pip requirements, e.g. `pytest pyyaml` |
 | `python-version` | no | `3.12` | |
+| `ruff-version` | no | `0.16.8` | Pinned so a ruff release can't fail every caller at once; override to match a repo's own pin |
 | `lint-paths` | no | `.github/scripts/` | Paths passed to ruff |
 | `test-command` | no | `pytest tests/ -v` | |
 | `required-files` | no | `action.yml` | Newline-separated paths that must exist |

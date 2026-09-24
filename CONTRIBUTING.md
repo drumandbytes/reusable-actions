@@ -5,9 +5,22 @@
 CI runs two linters over `.github/`; run them locally before pushing:
 
 ```sh
-actionlint                  # workflow syntax, expressions, shellcheck on run: blocks
-zizmor --offline .          # workflow security audit
+actionlint -ignore 'action "\$/[^"]*" in invalid format'   # syntax, expressions, shellcheck
+zizmor --offline .                                          # workflow security audit
 ```
+
+The `-ignore` covers GitHub's `$/` self-repository syntax, which actionlint
+1.7.12 doesn't know yet; drop it here and in `ci.yml` once it does.
+
+CI also runs `node-ci`, `opentofu-validate` and `security-scan` (both modes)
+against the minimal projects in `tests/fixtures/`, through local `./` paths,
+so a PR tests its own version of those workflows. When you change one of
+them, check its self-test still covers the change; add to the fixture if not.
+
+Shared steps used by more than one workflow live as composite actions under
+`.github/actions/` and are called with `uses: $/.github/actions/<name>`. `$/`
+resolves to this repo at the commit the workflow runs from; a `./` path would
+point into the caller's checkout instead.
 
 zizmor findings are fixed, not silenced. The exception is behavior that is
 intentional (a caller-supplied command, `workflow_run` for Dependabot): mark

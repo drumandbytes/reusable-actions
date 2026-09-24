@@ -13,6 +13,15 @@ on:
         required: false
         type: string
         default: "3.12"
+      ruff-version:
+        description: >-
+          ruff version for lint and format checks. Pinned so a new ruff
+          release -- its formatter style changes yearly -- can't fail every
+          caller's CI at once; bumped here deliberately. Override to match a
+          repo's own pin.
+        required: false
+        type: string
+        default: "0.16.8"
       lint-paths:
         description: Space-separated paths passed to ruff.
         required: false
@@ -53,7 +62,9 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ inputs.python-version }}
-      - run: pip install ruff
+      - run: pip install "ruff==${RUFF_VERSION}"
+        env:
+          RUFF_VERSION: ${{ inputs.ruff-version }}
       - run: ruff check ${{ inputs.lint-paths }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
       - run: ruff format --check ${{ inputs.lint-paths }}  # zizmor: ignore[template-injection] -- caller-supplied input, by design
 

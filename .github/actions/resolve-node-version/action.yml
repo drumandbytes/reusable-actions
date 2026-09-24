@@ -1,0 +1,63 @@
+name: Resolve Node version
+description: >-
+  Node version for a job: the nearest `node = "…"` pin in mise.toml or
+  .mise.toml, searching from a directory up to the repo root, else a default.
+
+# Shared by the Node-based reusable workflows in this repo, which call it as
+# `uses: $/.github/actions/resolve-node-version`. `$/` resolves to this repo
+# at the exact commit the workflow is running from -- the @v1 a caller
+# pinned, or a PR branch in this repo's own CI -- so the workflow and this
+# action can never drift apart. (A `./` path would point into the caller's
+# checkout instead.) Requires Actions runner 2.336.0 or newer.
+
+inputs:
+  default:
+    description: Version used when no mise config pins Node.
+    required: true
+  working-directory:
+    description: >-
+      Directory to start searching from, relative to the repo root. Composite
+      steps don't inherit the job's defaults.run.working-directory, so it has
+      to be passed explicitly.
+    required: false
+    default: "."
+
+outputs:
+  version:
+    description: The resolved Node version.
+    value: ${{ steps.resolve.outputs.version }}
+
+runs:
+  using: composite
+  steps:
+    # mise.toml is the source of truth for repos that have one, so a version
+    # lives in exactly one place instead of being repeated in every workflow
+    # that calls this. Falls back to the default for callers that have no
+    # mise.toml -- most of them, so this must stay a fallback rather than a
+    # requirement.
+    #
+    # Walks from the working directory up to the repo root, nearest node pin
+    # wins -- the way mise itself resolves config, so a single root mise.toml
+    # covers packages and workers living in subdirectories.
+    - id: resolve
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        DEFAULT_NODE_VERSION: ${{ inputs.default }}
+      run: |
+        version="$DEFAULT_NODE_VERSION"
+        dir="$PWD"
+        while :; do
+          for f in "$dir/mise.toml" "$dir/.mise.toml"; do
+            [ -f "$f" ] || continue
+            pinned=$(sed -nE 's/^[[:space:]]*node[[:space:]]*=[[:space:]]*"([^"]+)".*/\1/p' "$f" | head -1)
+            if [ -n "$pinned" ]; then
+              version="$pinned"
+              echo "Using node $version from ${f#"$GITHUB_WORKSPACE"/}"
+              break 2
+            fi
+          done
+          [ "$dir" = "$GITHUB_WORKSPACE" ] || [ "$dir" = / ] && break
+          dir=$(dirname "$dir")
+        done
+        echo "version=$version" >> "$GITHUB_OUTPUT"
