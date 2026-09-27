@@ -1,15 +1,11 @@
 version: 2
 updates:
-
-  # Grouped into a single PR so related action bumps land together rather than
-  # as a stream of separate PRs. Auto-merge handles them once CI passes.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
-    # Only offer releases at least a week old. A hijacked or broken release is
-    # usually caught and pulled within days; this keeps it from landing here
-    # (and, via auto-merge, in every caller) before that happens.
+    # Week-old releases only: a hijacked one is usually pulled within days,
+    # before auto-merge spreads it to every caller.
     cooldown:
       default-days: 7
     groups:
