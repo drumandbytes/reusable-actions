@@ -450,3 +450,7 @@ Org infrastructure, including the repository and ruleset configuration that
 governs this repo, is managed with OpenTofu in `drumandbytes/dnb-tf`. The
 design rationale for this repository is in that repo's
 `docs/reusable-workflows.md`.
+
+## How it was made
+
+Built with the help of an AI coding assistant (Claude). I review and test what gets published.
