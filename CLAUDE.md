@@ -82,7 +82,9 @@ footer; a patch bump is auto-merged by dnb-robot.
 ## Runners
 
 Public org repos run on GitHub-hosted runners (free). Private repos run on
-the two self-hosted `oracle-x64` VMs, so bursts of PRs queue. Plan: move
-light private-repo jobs (zizmor, lint, the required-checks gate) back to
-GitHub-hosted once monthly minutes allow. actionlint flags `oracle-x64` as
-an unknown label in callers; that's expected.
+the two self-hosted `oracle-x64` VMs, except zizmor, the required-checks
+gate and a few tiny jobs, which run GitHub-hosted so they don't queue behind
+builds. Each hosted job bills at least a minute, so one job type across the
+private repos is ~1,000 of the Team plan's 3,000 min/month; that's why
+auto-merge and release-please stay self-hosted. actionlint flags
+`oracle-x64` as an unknown label in callers; that's expected.
