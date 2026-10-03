@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   actionlint:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -36,12 +36,14 @@ jobs:
   zizmor:
     name: zizmor
     uses: ./.github/workflows/zizmor.yml
+    with:
+      runner: ubuntu-26.04
 
   # Self-tests: the PR's own workflows (local ./ paths) against tests/fixtures/.
 
   test-resolve-node-version:
     name: Test resolve-node-version
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     steps:
       - uses: actions/checkout@v7
@@ -69,6 +71,7 @@ jobs:
     name: Test node-ci
     uses: ./.github/workflows/node-ci.yml
     with:
+      runner: ubuntu-26.04
       lint-directory: tests/fixtures/node
       packages: '[{"directory": "tests/fixtures/node", "command": "npm test"}]'
 
@@ -76,18 +79,21 @@ jobs:
     name: Test opentofu-validate
     uses: ./.github/workflows/opentofu-validate.yml
     with:
+      runner: ubuntu-26.04
       working-directory: tests/fixtures/tofu
 
   test-security-scan-fs:
     name: Test security-scan (fs)
     uses: ./.github/workflows/security-scan.yml
     with:
+      runner: ubuntu-26.04
       scan-ref: tests/fixtures
 
   test-security-scan-image:
     name: Test security-scan (image)
     uses: ./.github/workflows/security-scan.yml
     with:
+      runner: ubuntu-26.04
       scan-type: image
       image-context: tests/fixtures/image
       dockerfile: tests/fixtures/image/Dockerfile
@@ -95,7 +101,7 @@ jobs:
   # The one name the ruleset requires, however the jobs above change.
   required-checks-passed:
     name: Required checks passed
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 60
     needs:
       - actionlint
