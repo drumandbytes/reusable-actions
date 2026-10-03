@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.18.1](https://github.com/drumandbytes/reusable-actions/compare/v1.18.0...v1.18.1) (2026-10-03)
+
+
+### Bug Fixes
+
+* **deps:** bump cloudflare/wrangler-action ([#57](https://github.com/drumandbytes/reusable-actions/issues/57)) ([9556f5d](https://github.com/drumandbytes/reusable-actions/commit/9556f5d648f317c83ed2060bf2ed6ba31c48c1e7))
+
 ## [1.18.0](https://github.com/drumandbytes/reusable-actions/compare/v1.17.2...v1.18.0) (2026-09-24)
 
 
