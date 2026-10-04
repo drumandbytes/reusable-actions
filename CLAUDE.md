@@ -20,6 +20,7 @@ truth if the two ever disagree.
 |---|---|---|
 | `deploy-cloudflare-worker.yml` | `working-directory` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
 | `deploy-cloudflare-pages.yml` | `project-name` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
+| `docker-publish.yml` | none (`image` defaults to `ghcr.io/<owner>/<repo>`) | — (caller grants `packages`/`id-token`/`attestations`/`artifact-metadata: write`) |
 | `security-scan.yml` | none (`scan-type: fs\|image` switches the rest of the input set) | — |
 | `opentofu-validate.yml` | none | — |
 | `auto-merge.yml` | none | `DNB_ROBOT_CLIENT_ID` + `AUTOMATION_APP_PRIVATE_KEY`, only if `use-app-token-for-merge: true` |
@@ -43,7 +44,7 @@ callers. `ci.yml` runs actionlint and zizmor (via the local `zizmor.yml`, which 
   workflow. It needs runner 2.336.0+, and actionlint 1.7.12 doesn't parse it,
   hence the narrow `-ignore` in `ci.yml`.
 - `ci.yml` runs `node-ci`, `opentofu-validate` and `security-scan` (fs and
-  image) against `tests/fixtures/` via local `./` paths. Deploys, `go-ci` and
+  image) against `tests/fixtures/` via local `./` paths. Deploys, `docker-publish`, `go-ci` and
   `python-action-ci` have no self-test (secrets / no subdirectory input).
 
 ## Action pinning
