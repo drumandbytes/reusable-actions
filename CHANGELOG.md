@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.19.0](https://github.com/drumandbytes/reusable-actions/compare/v1.18.1...v1.19.0) (2026-10-04)
+
+
+### Features
+
+* add docker-publish reusable workflow ([#61](https://github.com/drumandbytes/reusable-actions/issues/61)) ([2c4863a](https://github.com/drumandbytes/reusable-actions/commit/2c4863a7cd753fddc848a4a8f944d36a31f55c3e))
+
 ## [1.18.1](https://github.com/drumandbytes/reusable-actions/compare/v1.18.0...v1.18.1) (2026-10-03)
 
 
