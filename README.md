@@ -31,6 +31,7 @@ rather than a rewrite of an existing one.
 | [`go-ci.yml`](#go-ciyml) | Build, vet, gofmt, test, golangci-lint, hadolint |
 | [`python-action-ci.yml`](#python-action-ciyml) | Lint, test and structure checks for a Python GitHub Action |
 | [`opentofu-validate.yml`](#opentofu-validateyml) | `tofu fmt` and `tofu validate`, no credentials |
+| [`docker-publish.yml`](#docker-publishyml) | Multi-arch image to GHCR with SLSA provenance |
 | [`security-scan.yml`](#security-scanyml) | Trivy scan of the source tree or a built image |
 | [`auto-merge.yml`](#auto-mergeyml) | Enable auto-merge on Dependabot / release PRs once CI passes |
 | [`release-please.yml`](#release-pleaseyml) | Release PRs, tags and GitHub Releases from Conventional Commits |
@@ -265,6 +266,45 @@ jobs:
     with:
       working-directory: bootstrap/r2-state-backend
       check-format: false
+```
+
+### `docker-publish.yml`
+
+Builds and pushes a multi-arch image to GHCR in one job, then attests SLSA
+build provenance next to it. Built for cross-compiling Dockerfiles: with
+`FROM --platform=$BUILDPLATFORM` and `GOOS=$TARGETOS GOARCH=$TARGETARCH`, Go
+builds arm64 natively instead of under QEMU (~1 min instead of ~5). An image
+that can't cross-compile (apt installs per arch) is better off with a native
+per-arch job split, as in `nordvpn`'s `build.yml`.
+
+| Input | Required | Default | Description |
+|---|---|---|---|
+| `image` | no | `ghcr.io/<owner>/<repo>`, lowercased | Image name without tag |
+| `context` | no | `.` | Build context |
+| `platforms` | no | `linux/amd64,linux/arm64` | Target platforms |
+| `tags` | no | `latest` on the default branch, long `sha`, `{{version}}`, `{{major}}.{{minor}}` | docker/metadata-action `tags` rules |
+| `runner` | no | `ubuntu-latest` | |
+
+The caller must grant the job's permissions:
+
+```yaml
+name: Build
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*.*.*']
+  workflow_dispatch:
+
+jobs:
+  publish:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+      attestations: write
+      artifact-metadata: write
+    uses: drumandbytes/reusable-actions/.github/workflows/docker-publish.yml@v1
 ```
 
 ### `security-scan.yml`
