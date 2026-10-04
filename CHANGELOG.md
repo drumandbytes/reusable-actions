@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.0](https://github.com/drumandbytes/reusable-actions/compare/v1.19.0...v1.20.0) (2026-10-04)
+
+
+### Features
+
+* **docker-publish:** support self-hosted runners, private repos and build-only runs ([#63](https://github.com/drumandbytes/reusable-actions/issues/63)) ([9a103ff](https://github.com/drumandbytes/reusable-actions/commit/9a103ff9c670ab1ec0e99d8422e2625c0c54ddef))
+
 ## [1.19.0](https://github.com/drumandbytes/reusable-actions/compare/v1.18.1...v1.19.0) (2026-10-04)
 
 
