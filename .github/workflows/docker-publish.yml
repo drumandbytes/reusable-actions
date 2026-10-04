@@ -3,6 +3,11 @@ name: Docker publish
 # Multi-arch image to GHCR with SLSA build provenance. One job: for Go and
 # other cross-compiling Dockerfiles (FROM --platform=$BUILDPLATFORM), arm64
 # needs no QEMU and builds about as fast as amd64.
+#
+# On a self-hosted runner it builds with dockerd's own builder, whose layer
+# cache stays on the VM (capped at 20 GB afterwards). That builder does one
+# platform only, so pass `platforms: linux/amd64` there. Private repos get no
+# attestation: artifact attestations need GitHub Enterprise Cloud for them.
 
 on:
   workflow_call:
@@ -17,6 +22,21 @@ on:
         required: false
         type: string
         default: "."
+      file:
+        description: Dockerfile path. Empty means <context>/Dockerfile.
+        required: false
+        type: string
+        default: ""
+      target:
+        description: Build stage to stop at. Empty builds the last stage.
+        required: false
+        type: string
+        default: ""
+      push:
+        description: Push and attest the image. false only builds it, e.g. on pull requests.
+        required: false
+        type: boolean
+        default: true
       platforms:
         description: Comma-separated target platforms.
         required: false
@@ -65,6 +85,8 @@ jobs:
         shell: bash
 
       - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+        with:
+          driver: ${{ runner.environment == 'self-hosted' && 'docker' || 'docker-container' }}
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
           registry: ghcr.io
@@ -81,15 +103,31 @@ jobs:
         id: build
         with:
           context: ${{ inputs.context }}
+          file: ${{ inputs.file }}
+          target: ${{ inputs.target }}
           platforms: ${{ inputs.platforms }}
-          push: true
+          push: ${{ inputs.push }}
+          # dockerd's builder can't store buildx's provenance manifest
+          provenance: ${{ runner.environment == 'self-hosted' && 'false' || '' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
 
       # Stored next to the image in GHCR. Verify with:
       #   gh attestation verify oci://<image>:latest --owner <owner>
       - uses: actions/attest-build-provenance@v4
+        if: inputs.push && !github.event.repository.private
         with:
           subject-name: ${{ steps.image.outputs.name }}
           subject-digest: ${{ steps.build.outputs.digest }}
           push-to-registry: true
+
+      - name: Clean self-hosted runner Docker storage
+        if: always() && runner.environment == 'self-hosted'
+        run: |
+          docker container prune --force
+          docker image prune --all --force
+          docker volume prune --all --force
+          # Other repos' builds reuse this VM's build cache; cap it, don't wipe it.
+          docker buildx prune --builder default --force --max-used-space 20GB
+          docker system df
+        shell: bash

@@ -281,11 +281,21 @@ per-arch job split, as in `nordvpn`'s `build.yml`.
 |---|---|---|---|
 | `image` | no | `ghcr.io/<owner>/<repo>`, lowercased | Image name without tag |
 | `context` | no | `.` | Build context |
+| `file` | no | `<context>/Dockerfile` | Dockerfile path |
+| `target` | no | last stage | Build stage to stop at |
+| `push` | no | `true` | `false` only builds (e.g. on pull requests): no push, no attestation |
 | `platforms` | no | `linux/amd64,linux/arm64` | Target platforms |
 | `tags` | no | `latest` on the default branch, long `sha`, `{{version}}`, `{{major}}.{{minor}}` | docker/metadata-action `tags` rules |
 | `runner` | no | `ubuntu-latest` | |
 
-The caller must grant the job's permissions:
+On a **self-hosted** runner the job builds with dockerd's own builder, so
+the layer cache stays on the VM, and prunes it to 20 GB afterwards. That
+builder does one platform only: pass `platforms: linux/amd64`. **Private**
+repos get no attestation step: artifact attestations need GitHub Enterprise
+Cloud for private repositories.
+
+The caller must grant the job's permissions, even where the attestation is
+skipped (a called job can't ask for more than its caller grants):
 
 ```yaml
 name: Build
