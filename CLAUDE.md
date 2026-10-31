@@ -19,7 +19,7 @@ truth if the two ever disagree.
 | Workflow | Required inputs | Required secrets |
 |---|---|---|
 | `deploy-cloudflare-worker.yml` | `working-directory` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
-| `deploy-cloudflare-pages.yml` | `project-name` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` |
+| `deploy-cloudflare-pages.yml` | `project-name` | `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID` (callers pass a Pages-only token under that name) |
 | `docker-publish.yml` | none (`image` defaults to `ghcr.io/<owner>/<repo>`) | — (caller grants `packages`/`id-token`/`attestations`/`artifact-metadata: write`) |
 | `security-scan.yml` | none (`scan-type: fs\|image` switches the rest of the input set) | — |
 | `opentofu-validate.yml` | none | — |

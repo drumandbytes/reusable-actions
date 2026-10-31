@@ -71,7 +71,7 @@ rather than race; only the newest waiting run proceeds.
 
 | Secret | Required | Description |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | yes | Account API token with Workers Scripts Edit (plus Workers KV, D1 and Pages Edit and Zone Workers Routes Edit as the worker needs). drumandbytes uses the org secret `dnb-gha-workers-deploy` |
+| `CLOUDFLARE_API_TOKEN` | yes | Account API token with Workers Scripts Write (plus Workers Routes Write on the zone for custom routes; D1 only if the caller runs migrations). drumandbytes callers pass the org secret `dnb-ci-workers-deploy` |
 | `CLOUDFLARE_ACCOUNT_ID` | yes | Cloudflare account ID |
 
 ```yaml
@@ -132,7 +132,7 @@ jobs:
       build-env: >-
         {"VITE_API_BASE_URL": "${{ vars.VITE_API_BASE_URL }}"}
     secrets:
-      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_PAGES_API_TOKEN }}  # Pages-only token
       CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 ```
 
