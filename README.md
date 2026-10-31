@@ -71,7 +71,7 @@ rather than race; only the newest waiting run proceeds.
 
 | Secret | Required | Description |
 |---|---|---|
-| `CLOUDFLARE_API_TOKEN` | yes | Token with Workers deploy permission |
+| `CLOUDFLARE_API_TOKEN` | yes | Account API token with Workers Scripts Edit (plus Workers KV, D1 and Pages Edit and Zone Workers Routes Edit as the worker needs). drumandbytes uses the org secret `dnb-gha-workers-deploy` |
 | `CLOUDFLARE_ACCOUNT_ID` | yes | Cloudflare account ID |
 
 ```yaml
