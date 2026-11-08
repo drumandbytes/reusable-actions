@@ -288,8 +288,10 @@ per-arch job split, as in `nordvpn`'s `build.yml`.
 | `tags` | no | `latest` on the default branch, long `sha`, `{{version}}`, `{{major}}.{{minor}}` | docker/metadata-action `tags` rules |
 | `runner` | no | `ubuntu-latest` | |
 
-On a **self-hosted** runner the job builds with dockerd's own builder, so
-the layer cache stays on the VM, and prunes it to 20 GB afterwards. That
+On a **self-hosted** runner the job builds with dockerd's own builder (already
+selected there, so `setup-buildx` is skipped), so the layer cache stays on the VM, and
+prunes it to 20 GB afterwards. Cleanup removes the job's own tags and dangling layers but
+keeps other images, so the next job doesn't re-pull base and service images. That
 builder does one platform only: pass `platforms: linux/amd64`. **Private**
 repos get no attestation step: artifact attestations need GitHub Enterprise
 Cloud for private repositories.

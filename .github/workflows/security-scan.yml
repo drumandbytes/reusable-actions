@@ -83,10 +83,11 @@ jobs:
 
       # Self-hosted: dockerd's own builder keeps its layer cache on the VM,
       # faster than an Actions-cache round trip.
-      - if: inputs.scan-type == 'image'
+      # Self-hosted runners already have it selected (docker driver), no setup needed.
+      - if: inputs.scan-type == 'image' && runner.environment != 'self-hosted'
         uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
-          driver: ${{ runner.environment == 'self-hosted' && 'docker' || 'docker-container' }}
+          driver: docker-container
 
       - name: Build image to scan
         if: inputs.scan-type == 'image'
@@ -122,8 +123,11 @@ jobs:
         if: ${{ always() && runner.environment == 'self-hosted' }}
         run: |
           docker container prune --force
-          docker image prune --all --force
-          docker volume prune --all --force
+          # Only the scanned image and dangling layers: pruning every unused image made the
+          # next job on this VM pull its base and service images again.
+          docker rmi trivy-scan:latest 2>/dev/null || true
+          docker image prune --force
+          docker volume prune --force
           # Keep the build cache for the next job; cap it instead of wiping it.
           docker buildx prune --builder default --force --max-used-space 20GB
           docker system df
