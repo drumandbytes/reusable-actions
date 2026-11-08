@@ -84,9 +84,12 @@ jobs:
           echo "name=$IMAGE" >> "$GITHUB_OUTPUT"
         shell: bash
 
-      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+      # Self-hosted runners already have buildx with dockerd's `default` builder (the
+      # docker driver) selected; setting it up again costs ~15 s per job.
+      - if: runner.environment != 'self-hosted'
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         with:
-          driver: ${{ runner.environment == 'self-hosted' && 'docker' || 'docker-container' }}
+          driver: docker-container
       - uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
         with:
           registry: ghcr.io
@@ -101,6 +104,10 @@ jobs:
 
       - uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         id: build
+        env:
+          # The build record export and job summary cost a few seconds and nobody reads them.
+          DOCKER_BUILD_SUMMARY: "false"
+          DOCKER_BUILD_RECORD_UPLOAD: "false"
         with:
           context: ${{ inputs.context }}
           file: ${{ inputs.file }}
@@ -123,10 +130,16 @@ jobs:
 
       - name: Clean self-hosted runner Docker storage
         if: always() && runner.environment == 'self-hosted'
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
         run: |
           docker container prune --force
-          docker image prune --all --force
-          docker volume prune --all --force
+          # Drop what this job tagged, then dangling layers. Base and service images (postgres,
+          # ...) stay: `image prune --all` evicted them, so the next build or CI job on this VM
+          # pulled them again (a 1 GB postgres image took 40 s+).
+          printf '%s\n' "$TAGS" | xargs -r docker rmi 2>/dev/null || true
+          docker image prune --force
+          docker volume prune --force
           # Other repos' builds reuse this VM's build cache; cap it, don't wipe it.
           docker buildx prune --builder default --force --max-used-space 20GB
           docker system df
