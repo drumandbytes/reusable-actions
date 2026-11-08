@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.20.3](https://github.com/drumandbytes/reusable-actions/compare/v1.20.2...v1.20.3) (2026-11-08)
+
+
+### Performance Improvements
+
+* faster docker-publish and security-scan on self-hosted runners ([#70](https://github.com/drumandbytes/reusable-actions/issues/70)) ([17fda40](https://github.com/drumandbytes/reusable-actions/commit/17fda405962bd26c51a9c0f4cb68a9eb9435f242))
+
 ## [1.20.2](https://github.com/drumandbytes/reusable-actions/compare/v1.20.1...v1.20.2) (2026-10-31)
 
 
