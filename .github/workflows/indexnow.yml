@@ -7,7 +7,7 @@ on:
   workflow_call:
     inputs:
       host:
-        description: Hostname to submit, e.g. "eraser.drumandbytes.dev".
+        description: Hostname to submit, e.g. "delistd.dev".
         required: true
         type: string
       key:
