@@ -149,7 +149,7 @@ never fails the caller's run (`continue-on-error`). The site must serve
 
 | Input | Required | Default | Description |
 |---|---|---|---|
-| `host` | yes | — | Hostname, e.g. `eraser.drumandbytes.dev` |
+| `host` | yes | — | Hostname, e.g. `delistd.dev` |
 | `key` | yes | — | IndexNow key — pass the org's `INDEXNOW_KEY` variable |
 | `runner` | no | `ubuntu-latest` | |
 | `sitemap-artifact` | no | `""` | Artifact holding the built sitemaps, paths as served (`sitemap.xml` at its root) |
